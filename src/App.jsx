@@ -3,7 +3,7 @@ import React, { useRef } from 'react';
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import HomePage from "./pages/homePage";
 import CarRentals from "./pages/carRentals"
-import PropertyDetail from './components/PropertyDetail'; 
+import PropertyDetail from './pages/detail'; 
 import { PropertyProvider } from './context/PropertyContext';
 import { CarProvider } from './context/CarContext';
 

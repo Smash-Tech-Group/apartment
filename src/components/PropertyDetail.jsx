@@ -704,20 +704,7 @@ const PropertyDetail = () => {
         </div>
 
 
-{/* Map Section - Replace your existing Map component usage */}
-<div className="w-full mt-8">
-  <div className="bg-white overflow-hidden" style={{ height: '650px' }}>
-    <Map
-      location={property.location}
-      propertyType={property.type}
-      propertyId={property.id}
-    />
-  </div>
-</div>
 
-<div>
-  <Footer/>
-</div>
 
 
 

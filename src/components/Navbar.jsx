@@ -4,13 +4,22 @@ import profile from "../assets/profile.svg";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useUser, useSignIn, useSignUp, useClerk } from '@clerk/clerk-react';
 
 const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
-  const [user, setUser] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordSubmitted, setForgotPasswordSubmitted] = useState(false);
+
+  // Clerk hooks
+  const { user, isSignedIn } = useUser();
+  const { signIn, setActive, isLoaded: signInLoaded } = useSignIn();
+  const { signUp, setActive: setSignUpActive, isLoaded: signUpLoaded } = useSignUp();
+  const { signOut } = useClerk();
 
   // Use React Router's useLocation and useNavigate
   const location = useLocation();
@@ -21,7 +30,7 @@ const Navbar = () => {
     if (location.pathname === "/car-rentals") {
       return "car-rental";
     }
-    return "apartments"; // default for home page "/"
+    return "apartments"; 
   };
 
   const [activeTab, setActiveTab] = useState(getActiveTab());
@@ -41,6 +50,10 @@ const Navbar = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
 
   const handleAuthClick = (type) => {
     setModalType(type);
@@ -48,6 +61,8 @@ const Navbar = () => {
     setIsDropdownOpen(false);
     setIsMobileMenuOpen(false);
     setRegisterStep(1);
+    setAuthError("");
+    setPendingVerification(false);
     // Reset form states
     setPassword("");
     setConfirmPassword("");
@@ -57,12 +72,15 @@ const Navbar = () => {
     setAgreeToTerms(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setVerificationCode("");
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
     setModalType("");
     setRegisterStep(1);
+    setAuthError("");
+    setPendingVerification(false);
     // Reset form states
     setPassword("");
     setConfirmPassword("");
@@ -72,31 +90,156 @@ const Navbar = () => {
     setAgreeToTerms(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setVerificationCode("");
   };
 
-  const handleLogin = (e) => {
+  // Clerk sign in handler
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Mock login - replace with actual authentication
-    setUser({ name: "John Doe" });
-    setIsModalOpen(false);
+    
+    if (!signInLoaded) {
+      setAuthError("Authentication not ready. Please try again.");
+      return;
+    }
+
+    if (!email || !password) {
+      setAuthError("Please fill in all fields");
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthError("");
+
+    try {
+      const result = await signIn.create({
+        identifier: email,
+        password: password,
+      });
+
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        handleModalClose();
+      } else {
+        setAuthError("Sign in incomplete. Please try again.");
+      }
+    } catch (error) {
+      console.error("Sign in error:", error);
+      setAuthError(error.errors?.[0]?.message || "Sign in failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setIsDropdownOpen(false);
-    setIsMobileMenuOpen(false);
+  // Clerk sign up handler
+  const handleRegisterNext = async () => {
+    if (!signUpLoaded) {
+      setAuthError("Authentication not ready. Please try again.");
+      return;
+    }
+
+    setIsLoading(true);
+    setAuthError("");
+
+    if (registerStep === 1) {
+      // Validate step 1
+      if (!email || !password || !confirmPassword) {
+        setAuthError("Please fill in all fields");
+        setIsLoading(false);
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setAuthError("Passwords do not match");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!passwordStrength.isStrong) {
+        setAuthError("Password must meet all strength requirements");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await signUp.create({
+          emailAddress: email,
+          password: password,
+        });
+
+        // Send verification email
+        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        setRegisterStep(2);
+        setPendingVerification(true);
+      } catch (error) {
+        console.error("Sign up error:", error);
+        setAuthError(error.errors?.[0]?.message || "Sign up failed. Please try again.");
+      }
+    } else if (registerStep === 2 && !pendingVerification) {
+      // Handle final registration with name
+      if (!firstName || !lastName || !agreeToTerms) {
+        setAuthError("Please fill in all fields and agree to terms");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await signUp.update({
+          firstName: firstName,
+          lastName: lastName,
+        });
+
+        // Prepare verification after updating profile
+        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+        setPendingVerification(true);
+      } catch (error) {
+        console.error("Profile update error:", error);
+        setAuthError(error.errors?.[0]?.message || "Profile update failed");
+      }
+    } else if (pendingVerification) {
+      // Handle email verification
+      if (!verificationCode) {
+        setAuthError("Please enter the verification code");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const completeSignUp = await signUp.attemptEmailAddressVerification({
+          code: verificationCode
+        });
+
+        if (completeSignUp.status === "complete") {
+          await setSignUpActive({ session: completeSignUp.createdSessionId });
+          handleModalClose();
+        } else {
+          setAuthError("Verification incomplete. Please try again.");
+        }
+      } catch (error) {
+        console.error("Verification error:", error);
+        setAuthError(error.errors?.[0]?.message || "Verification failed. Please check your code.");
+      }
+    }
+    setIsLoading(false);
+  };
+
+  // Clerk logout handler
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setIsDropdownOpen(false);
+      setIsMobileMenuOpen(false);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   const handleTabClick = (tab) => {
     setIsMobileMenuOpen(false);
-    
-    // Use React Router navigation instead of window.location.href
+
     if (tab === "car-rental") {
       navigate("/car-rentals");
-      console.log("Navigating to /car-rentals");
     } else if (tab === "apartments") {
       navigate("/");
-      console.log("Navigating to /");
     }
   };
 
@@ -126,34 +269,93 @@ const Navbar = () => {
 
   const passwordStrength = getPasswordStrength(password);
 
-  const handleRegisterNext = () => {
-    if (registerStep === 1) {
-      // Validate step 1
-      if (
-        email &&
-        password &&
-        confirmPassword &&
-        password === confirmPassword &&
-        passwordStrength.isStrong
-      ) {
-        setRegisterStep(2);
-      }
-    } else if (registerStep === 2) {
-      // Handle final registration
-      if (firstName && lastName && agreeToTerms) {
-        // Mock registration - replace with actual registration
-        setUser({ name: `${firstName} ${lastName}` });
-        setIsModalOpen(false);
-      }
+  // Handle forgot password with Clerk
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!signInLoaded) {
+      setAuthError("Authentication not ready. Please try again.");
+      return;
+    }
+
+    if (!forgotPasswordEmail) {
+      setAuthError("Please enter your email address");
+      return;
+    }
+
+    try {
+      await signIn.create({
+        identifier: forgotPasswordEmail,
+        strategy: "reset_password_email_code",
+      });
+      setForgotPasswordSubmitted(true);
+      setAuthError("");
+    } catch (error) {
+      console.error("Password reset error:", error);
+      setAuthError(error.errors?.[0]?.message || "Password reset failed. Please try again.");
     }
   };
 
-  const handleGoogleSignIn = () => {
-    // Mock Google sign in - replace with actual Google OAuth
-    console.log("Google sign in clicked");
-    setUser({ name: "Google User" });
-    setIsModalOpen(false);
+  const handleForgotPasswordClose = () => {
+    setIsForgotPasswordOpen(false);
+    setForgotPasswordEmail("");
+    setForgotPasswordSubmitted(false);
+    setAuthError("");
   };
+
+  // Handle Google sign in with Clerk
+  const handleGoogleSignIn = async () => {
+    if (!signInLoaded) {
+      setAuthError("Authentication not ready. Please try again.");
+      return;
+    }
+
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: window.location.origin + "/sso-callback",
+        redirectUrlComplete: window.location.origin + "/",
+      });
+    } catch (error) {
+      console.error("Google sign in error:", error);
+      setAuthError(error.errors?.[0]?.message || "Google sign in failed. Please try again.");
+    }
+  };
+
+  // Get user avatar or initials
+  const getUserAvatar = () => {
+    if (!user) return { initials: "G", color: "#6B7280" };
+    
+    // If user has profile image URL, return it
+    if (user.imageUrl) {
+      return { imageUrl: user.imageUrl };
+    }
+    
+    // Generate initials and color
+    const firstName = user.firstName || '';
+    const lastName = user.lastName || '';
+    const email = user.emailAddresses?.[0]?.emailAddress || '';
+    
+    let initials = '';
+    if (firstName && lastName) {
+      initials = firstName.charAt(0) + lastName.charAt(0);
+    } else if (firstName) {
+      initials = firstName.charAt(0);
+    } else if (email) {
+      initials = email.charAt(0);
+    } else {
+      initials = 'U';
+    }
+    
+    // Generate consistent color based on user ID or email
+    const userId = user.id || email;
+    const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4'];
+    const colorIndex = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    
+    return { initials: initials.toUpperCase(), color: colors[colorIndex] };
+  };
+
+  const userAvatar = getUserAvatar();
 
   return (
     <>
@@ -163,8 +365,8 @@ const Navbar = () => {
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <Link to='/'>
-                        <img src={Logo} alt="Logo" className="h-10" />
+            <Link to="/">
+              <img src={Logo} alt="Logo" className="h-10" />
             </Link>
           </motion.div>
 
@@ -183,7 +385,7 @@ const Navbar = () => {
               >
                 <motion.span
                   animate={{
-                    color: activeTab === "apartments" ? "#000000" : "#6b7280"
+                    color: activeTab === "apartments" ? "#000000" : "#6b7280",
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -203,7 +405,7 @@ const Navbar = () => {
               >
                 <motion.span
                   animate={{
-                    color: activeTab === "car-rental" ? "#000000" : "#6b7280"
+                    color: activeTab === "car-rental" ? "#000000" : "#6b7280",
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -237,7 +439,11 @@ const Navbar = () => {
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
+                    transition={{
+                      duration: 0.2,
+                      type: "spring",
+                      stiffness: 300,
+                    }}
                     className="absolute right-[-80px] mt-4 w-39 bg-white rounded-2xl text-sm shadow-lg border px-3 border-gray-200 py-2 z-50"
                   >
                     {user ? (
@@ -248,7 +454,34 @@ const Navbar = () => {
                           whileHover={{ x: 4 }}
                           transition={{ type: "spring", stiffness: 300 }}
                         >
-                          Dashboard
+                          My Account
+                        </motion.button>
+
+                        <motion.button
+                          onClick={() => handleAuthClick("Notifications")}
+                          className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold border-t transition-colors duration-200"
+                          whileHover={{ x: 4 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          Notifications
+                        </motion.button>
+
+                        <motion.button
+                          onClick={() => handleAuthClick("dashboard")}
+                          className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold border-t transition-colors duration-200"
+                          whileHover={{ x: 4 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          List Stays
+                        </motion.button>
+
+                        <motion.button
+                          onClick={() => handleAuthClick("dashboard")}
+                          className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold border-t transition-colors duration-200"
+                          whileHover={{ x: 4 }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          List Rides
                         </motion.button>
 
                         <motion.button
@@ -257,12 +490,12 @@ const Navbar = () => {
                           whileHover={{ x: 4 }}
                           transition={{ type: "spring", stiffness: 300 }}
                         >
-                          Logout
+                          Sign Out
                         </motion.button>
                       </>
                     ) : (
                       <>
-                           <motion.button
+                        <motion.button
                           onClick={() => handleAuthClick("register")}
                           className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold transition-colors duration-200"
                           whileHover={{ x: 4 }}
@@ -272,13 +505,12 @@ const Navbar = () => {
                         </motion.button>
                         <motion.button
                           onClick={() => handleAuthClick("signin")}
-                          className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold  border-t hover:font-semibold transition-colors duration-200"
+                          className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold border-t transition-colors duration-200"
                           whileHover={{ x: 4 }}
                           transition={{ type: "spring", stiffness: 300 }}
                         >
                           Sign In
                         </motion.button>
-                   
                       </>
                     )}
                   </motion.div>
@@ -286,39 +518,56 @@ const Navbar = () => {
               </AnimatePresence>
             </div>
 
-            <motion.div 
-              className="flex items-center gap-2"
-              whileHover={{ scale: 1.02 }}
-            >
-              <motion.span 
-                className="text-sm font-medium text-gray-700"
-                animate={{ opacity: user ? 1 : 0.7 }}
-                transition={{ duration: 0.3 }}
-              >
-                {user ? user.name : "Guest"}
-              </motion.span>
-              <motion.img 
-                src={profile} 
-                alt="Profile" 
-                className="w-6 h-6"
-                // whileHover={{ rotate: 360 }}
-                // transition={{ duration: 0.5 }}
-              />
-            </motion.div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700">
+                {isSignedIn ? 
+                  (user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "User") : 
+                  "Guest"
+                }
+              </span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
+                {userAvatar.imageUrl ? (
+                  <img 
+                    src={userAvatar.imageUrl} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full flex items-center justify-center text-white text-xs font-semibold"
+                    style={{ backgroundColor: userAvatar.color }}
+                  >
+                    {userAvatar.initials}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <motion.img 
-                src={profile} 
-                alt="Profile" 
-                className="w-6 h-6"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              />
-              <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                {user ? user.name : "Guest"}
+              <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden">
+                {userAvatar.imageUrl ? (
+                  <img 
+                    src={userAvatar.imageUrl} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full flex items-center justify-center text-white text-xs font-semibold"
+                    style={{ backgroundColor: userAvatar.color }}
+                  >
+                    {userAvatar.initials}
+                  </div>
+                )}
+              </div>
+              <span className="text-sm font-semibold">
+                {isSignedIn ? 
+                  (user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "User") : 
+                  "Guest"
+                }
               </span>
             </div>
             <motion.button
@@ -367,7 +616,7 @@ const Navbar = () => {
                 >
                   <motion.div
                     animate={{
-                      color: activeTab === "apartments" ? "#000" : "#6b7280"
+                      color: activeTab === "apartments" ? "#000" : "#6b7280",
                     }}
                     transition={{ duration: 0.2 }}
                   >
@@ -379,7 +628,7 @@ const Navbar = () => {
                   onClick={() => handleTabClick("car-rental")}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-300 ${
                     activeTab === "car-rental"
-                      ? "bg-gray-100 text-bases font-medium"
+                      ? "bg-gray-100 text-base font-medium"
                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                   whileHover={{ x: 4, scale: 1.02 }}
@@ -390,7 +639,7 @@ const Navbar = () => {
                 >
                   <motion.div
                     animate={{
-                      color: activeTab === "car-rental" ? "#000" : "#6b7280"
+                      color: activeTab === "car-rental" ? "#000" : "#6b7280",
                     }}
                     transition={{ duration: 0.2 }}
                   >
@@ -400,7 +649,7 @@ const Navbar = () => {
               </div>
 
               {/* Mobile Auth Buttons */}
-              <motion.div 
+              <motion.div
                 className="border-t border-gray-200 pt-2 mt-2 space-y-1"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -488,9 +737,20 @@ const Navbar = () => {
                 </motion.button>
               </div>
 
+              {/* Error Display */}
+              {authError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg"
+                >
+                  <p className="text-red-700 text-sm">{authError}</p>
+                </motion.div>
+              )}
+
               {/* Sign In Form */}
               {modalType === "signin" && (
-                <motion.div 
+                <motion.div
                   className="space-y-3"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -499,29 +759,33 @@ const Navbar = () => {
                   <h3 className="text-sm font-semibold text-center">
                     Sign In To Your Account
                   </h3>
-                  <div className="w-full">
-                    <motion.div 
-                      className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
-                      whileFocus={{ scale: 1.02 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                    >
-                      <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
-                        Email
-                      </span>
-                      <input
-                        type="email"
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="flex-1 px-3 py-[13px] text-xs focus:outline-none"
-                        placeholder="Enter your email"
-                      />
-                    </motion.div>
-                  </div>
+                  <form onSubmit={handleLogin} className="space-y-3">                     
 
-                  <div className="w-full">
-                    <motion.div 
-                      className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 relative"
-                      whileFocus={{ scale: 1.02 }}
-                      transition={{ type: "spring", stiffness: 300 }}
+                    <div className="w-full">
+                      <motion.div
+                        className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
+                        whileFocus={{ scale: 1.02 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
+                          Email
+                        </span>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="flex-1 px-3 py-[13px] text-xs focus:outline-none"
+                          placeholder="Enter your email"
+                          required
+                        />
+                      </motion.div>
+                    </div>
+
+                    <div className="w-full">
+                      <motion.div
+                        className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 relative"
+                        whileFocus={{ scale: 1.02 }}
+                        transition={{ type: "spring", stiffness: 300 }}
                     >
                       {/* Left inline label with separator */}
                       <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
@@ -587,13 +851,186 @@ const Navbar = () => {
                   {/* Forgotten Password */}
                   <div className="text-right">
                     <motion.button
-                      onClick={() => console.log("Forgot password clicked")}
+                      onClick={() => setIsForgotPasswordOpen(true)}
                       className="text-xs text-primary hover:text-blue-700 font-medium"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
                       Forgotten Password?
                     </motion.button>
+
+                    {/* Forgot Password Modal */}
+                    <AnimatePresence>
+                      {isForgotPasswordOpen && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                          onClick={handleForgotPasswordClose}
+                        >
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            transition={{
+                              duration: 0.3,
+                              type: "spring",
+                              stiffness: 300,
+                            }}
+                            className="bg-white rounded-2xl p-6 w-full max-w-xl !h-[500px] mx-4 shadow-xl"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex justify-between items-center mb-6">
+                              <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                transition={{ type: "spring", stiffness: 300 }}
+                              >
+                                <img src={Logo} className="h-10" alt="" />
+                              </motion.div>
+                              <motion.button
+                                onClick={handleForgotPasswordClose}
+                                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1"
+                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <svg
+                                  className="w-6 h-6"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </motion.button>
+                            </div>
+
+                            <motion.div
+                              className="space-y-4"
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 }}
+                            >
+                              {!forgotPasswordSubmitted ? (
+                                <>
+                                  <div className="text-center mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                      Reset Your Password
+                                    </h3>
+                                    <p className="text-sm text-left text-gray-600">
+                              Enter your email address linked to Smash Apartments, and we'll send you a reset link to regain access to your account.
+                                    </p>
+                                  </div>
+
+                                  <form
+                                    onSubmit={handleForgotPasswordSubmit}
+                                    className="space-y-4"
+                                  >
+                                    <div className="w-full">
+                                      <motion.div
+                                        className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
+                                        whileFocus={{ scale: 1.02 }}
+                                        transition={{
+                                          type: "spring",
+                                          stiffness: 300,
+                                        }}
+                                      >
+                                        <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
+                                          Email
+                                        </span>
+                                        <input
+                                          type="email"
+                                          value={forgotPasswordEmail}
+                                          onChange={(e) =>
+                                            setForgotPasswordEmail(
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1 px-3 py-[13px] text-xs focus:outline-none"
+                                          placeholder="Enter your email"
+                                          required
+                                        />
+                                      </motion.div>
+                                    </div>
+
+                                    <div className="flex space-x-3">
+                                      {/* <motion.button
+                                        type="button"
+                                        onClick={handleForgotPasswordClose}
+                                        className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-full hover:bg-gray-300 transition-colors duration-200 font-medium text-sm"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                      >
+                                        Cancel
+                                      </motion.button> */}
+                                      <motion.button
+                                        type="submit"
+                                        className="flex-1 bg-primary text-white py-3 px-4 rounded-full hover:bg-opacity-80 transition-colors duration-200 font-medium text-sm"
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                      >
+                                        Send Reset Link
+                                      </motion.button>
+                                    </div>
+                                  </form>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-center py-6">
+                                    <motion.div
+                                      initial={{ scale: 0 }}
+                                      animate={{ scale: 1 }}
+                                      transition={{
+                                        delay: 0.2,
+                                        type: "spring",
+                                        stiffness: 300,
+                                      }}
+                                      className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center"
+                                    >
+                                      <svg
+                                        className="w-8 h-8 text-green-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M5 13l4 4L19 7"
+                                        />
+                                      </svg>
+                                    </motion.div>
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                      Check Your Email
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mb-6">
+                                      We've sent a password reset link to{" "}
+                                      <span className="font-medium">
+                                        {forgotPasswordEmail}
+                                      </span>
+                                    </p>
+                                    <motion.button
+                                      onClick={handleForgotPasswordClose}
+                                      className="w-full bg-primary text-white py-3 px-4 rounded-full hover:bg-opacity-80 transition-colors duration-200 font-medium text-sm"
+                                      whileHover={{ scale: 1.02 }}
+                                      whileTap={{ scale: 0.98 }}
+                                    >
+                                      Done
+                                    </motion.button>
+                                  </div>
+                                </>
+                              )}
+                            </motion.div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   <motion.button
@@ -641,12 +1078,13 @@ const Navbar = () => {
                     </svg>
                     Continue with Google
                   </motion.button>
+    </form>
                 </motion.div>
               )}
 
               {/* Register Form */}
               {modalType === "register" && (
-                <motion.div 
+                <motion.div
                   className="space-y-3"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -655,7 +1093,7 @@ const Navbar = () => {
                   {registerStep === 1 && (
                     <>
                       <div className="w-full">
-                        <motion.div 
+                        <motion.div
                           className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
                           whileFocus={{ scale: 1.02 }}
                         >
@@ -802,7 +1240,7 @@ const Navbar = () => {
                             type={showConfirmPassword ? "text" : "password"}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="flex-1 text-xs px-3 py-[13px] text-sm focus:outline-none"
+                            className="flex-1 text-xs px-3 py-[13px] focus:outline-none"
                             placeholder="Confirm your password"
                           />
                           <button

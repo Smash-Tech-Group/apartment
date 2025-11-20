@@ -337,8 +337,8 @@ const WhatWeOffer = () => {
                             </div>
 
                             <div className='flex items-center gap-2 min-h-[60px]'>
-                                <img src={master} alt="" className="flex-shrink-0 w-8 h-6" />
-                                <img src={visa} alt="" className="flex-shrink-0 w-8 h-6" />
+                                <img src={master} alt="" className="flex-shrink-0 w-[4rem] h-[4rem]" />
+                                <img src={visa} alt="" className="flex-shrink-0 w-[4rem] h-[4rem]" />
                             </div>
                         </div>
                     </div>
