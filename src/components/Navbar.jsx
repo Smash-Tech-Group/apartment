@@ -3,14 +3,17 @@ import burger from "../assets/burger.svg";
 import profile from "../assets/profile.svg";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+
 import { useUser, useSignIn, useSignUp, useClerk } from '@clerk/clerk-react';
 
-const Navbar = () => {
+import { useState, useEffect, useRef  } from "react";
+
+const Navbar = ({ showNavLinks = true }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSubmitted, setForgotPasswordSubmitted] = useState(false);
@@ -20,6 +23,8 @@ const Navbar = () => {
   const { signIn, setActive, isLoaded: signInLoaded } = useSignIn();
   const { signUp, setActive: setSignUpActive, isLoaded: signUpLoaded } = useSignUp();
   const { signOut } = useClerk();
+
+  const dropdownRef = useRef(null);
 
   // Use React Router's useLocation and useNavigate
   const location = useLocation();
@@ -34,6 +39,52 @@ const Navbar = () => {
   };
 
   const [activeTab, setActiveTab] = useState(getActiveTab());
+
+
+
+
+
+
+
+
+
+
+    // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      // if click is outside dropdown container, close it
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    // cleanup on unmount
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // Update activeTab when route changes
   useEffect(() => {
@@ -56,6 +107,14 @@ const Navbar = () => {
   const [pendingVerification, setPendingVerification] = useState(false);
 
   const handleAuthClick = (type) => {
+
+
+  if (type === "dashboard" || type === "profile" || type === "settings") {
+    navigate(`/${type}`);
+    setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    return;
+  }
     setModalType(type);
     setIsModalOpen(true);
     setIsDropdownOpen(false);
@@ -371,52 +430,56 @@ const Navbar = () => {
           </motion.div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="flex relative p-1">
-              <motion.button
-                onClick={() => handleTabClick("apartments")}
-                className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${
-                  activeTab === "apartments"
-                    ? "text-black font-medium"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <motion.span
-                  animate={{
-                    color: activeTab === "apartments" ? "#000000" : "#6b7280",
-                  }}
-                  transition={{ duration: 0.2 }}
-                >
-                  Apartments
-                </motion.span>
-              </motion.button>
 
-              <motion.button
-                onClick={() => handleTabClick("car-rental")}
-                className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${
-                  activeTab === "car-rental"
-                    ? "text-black font-medium"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <motion.span
-                  animate={{
-                    color: activeTab === "car-rental" ? "#000000" : "#6b7280",
-                  }}
-                  transition={{ duration: 0.2 }}
+          {showNavLinks && (
+            <div className="hidden md:block">
+              <div className="flex relative p-1">
+                <motion.button
+                  onClick={() => handleTabClick("apartments")}
+                  className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${
+                    activeTab === "apartments"
+                      ? "text-black font-medium"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  Car rentals
-                </motion.span>
-              </motion.button>
+                  <motion.span
+                    animate={{
+                      color: activeTab === "apartments" ? "#000000" : "#6b7280"
+                    }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Apartments
+                  </motion.span>
+                </motion.button>
+
+
+                <motion.button
+                  onClick={() => handleTabClick("car-rental")}
+                  className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${
+                    activeTab === "car-rental"
+                      ? "text-black font-medium"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <motion.span
+                    animate={{
+                      color: activeTab === "car-rental" ? "#000000" : "#6b7280"
+                    }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Car rentals
+                  </motion.span>
+                </motion.button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Desktop Right Side */}
-          <div className="hidden md:flex bg-tertiary p-2 rounded-full items-center gap-3">
+          <div className="hidden md:flex bg-tertiary p-2 rounded-full items-center gap-3"  ref={dropdownRef}>
             <div className="relative">
               <motion.button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
