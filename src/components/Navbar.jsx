@@ -3,12 +3,13 @@ import burger from "../assets/burger.svg";
 import profile from "../assets/profile.svg";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { useUser, useSignIn, useSignUp, useClerk } from '@clerk/clerk-react';
-
 import { useState, useEffect, useRef  } from "react";
+import { useAuth } from "../context/AuthContext";
+import { forgotPassword } from "../lib/auth";
 
 const Navbar = ({ showNavLinks = true }) => {
+  const { user, loading, loginUser, registerUser, logoutUser } = useAuth();
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
@@ -17,12 +18,6 @@ const Navbar = ({ showNavLinks = true }) => {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordSubmitted, setForgotPasswordSubmitted] = useState(false);
-
-  // Clerk hooks
-  const { user, isSignedIn } = useUser();
-  const { signIn, setActive, isLoaded: signInLoaded } = useSignIn();
-  const { signUp, setActive: setSignUpActive, isLoaded: signUpLoaded } = useSignUp();
-  const { signOut } = useClerk();
 
   const dropdownRef = useRef(null);
 
@@ -40,19 +35,24 @@ const Navbar = ({ showNavLinks = true }) => {
 
   const [activeTab, setActiveTab] = useState(getActiveTab());
 
+  // Auth-related state
+  const [registerStep, setRegisterStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [pendingVerification, setPendingVerification] = useState(false);
 
-
-
-
-
-
-
-
-
-    // Close dropdown when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
-      // if click is outside dropdown container, close it
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
       }
@@ -64,248 +64,15 @@ const Navbar = ({ showNavLinks = true }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     }
 
-    // cleanup on unmount
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isDropdownOpen]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   // Update activeTab when route changes
   useEffect(() => {
     setActiveTab(getActiveTab());
   }, [location.pathname]);
-
-  // New states for enhanced functionality
-  const [registerStep, setRegisterStep] = useState(1);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
-  const [authError, setAuthError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [pendingVerification, setPendingVerification] = useState(false);
-
-  const handleAuthClick = (type) => {
-
-
-  if (type === "dashboard" || type === "profile" || type === "settings") {
-    navigate(`/${type}`);
-    setIsDropdownOpen(false);
-    setIsMobileMenuOpen(false);
-    return;
-  }
-    setModalType(type);
-    setIsModalOpen(true);
-    setIsDropdownOpen(false);
-    setIsMobileMenuOpen(false);
-    setRegisterStep(1);
-    setAuthError("");
-    setPendingVerification(false);
-    // Reset form states
-    setPassword("");
-    setConfirmPassword("");
-    setEmail("");
-    setFirstName("");
-    setLastName("");
-    setAgreeToTerms(false);
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-    setVerificationCode("");
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setModalType("");
-    setRegisterStep(1);
-    setAuthError("");
-    setPendingVerification(false);
-    // Reset form states
-    setPassword("");
-    setConfirmPassword("");
-    setEmail("");
-    setFirstName("");
-    setLastName("");
-    setAgreeToTerms(false);
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-    setVerificationCode("");
-  };
-
-  // Clerk sign in handler
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    
-    if (!signInLoaded) {
-      setAuthError("Authentication not ready. Please try again.");
-      return;
-    }
-
-    if (!email || !password) {
-      setAuthError("Please fill in all fields");
-      return;
-    }
-
-    setIsLoading(true);
-    setAuthError("");
-
-    try {
-      const result = await signIn.create({
-        identifier: email,
-        password: password,
-      });
-
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        handleModalClose();
-      } else {
-        setAuthError("Sign in incomplete. Please try again.");
-      }
-    } catch (error) {
-      console.error("Sign in error:", error);
-      setAuthError(error.errors?.[0]?.message || "Sign in failed. Please check your credentials.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Clerk sign up handler
-  const handleRegisterNext = async () => {
-    if (!signUpLoaded) {
-      setAuthError("Authentication not ready. Please try again.");
-      return;
-    }
-
-    setIsLoading(true);
-    setAuthError("");
-
-    if (registerStep === 1) {
-      // Validate step 1
-      if (!email || !password || !confirmPassword) {
-        setAuthError("Please fill in all fields");
-        setIsLoading(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        setAuthError("Passwords do not match");
-        setIsLoading(false);
-        return;
-      }
-
-      if (!passwordStrength.isStrong) {
-        setAuthError("Password must meet all strength requirements");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        await signUp.create({
-          emailAddress: email,
-          password: password,
-        });
-
-        // Send verification email
-        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-        setRegisterStep(2);
-        setPendingVerification(true);
-      } catch (error) {
-        console.error("Sign up error:", error);
-        setAuthError(error.errors?.[0]?.message || "Sign up failed. Please try again.");
-      }
-    } else if (registerStep === 2 && !pendingVerification) {
-      // Handle final registration with name
-      if (!firstName || !lastName || !agreeToTerms) {
-        setAuthError("Please fill in all fields and agree to terms");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        await signUp.update({
-          firstName: firstName,
-          lastName: lastName,
-        });
-
-        // Prepare verification after updating profile
-        await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-        setPendingVerification(true);
-      } catch (error) {
-        console.error("Profile update error:", error);
-        setAuthError(error.errors?.[0]?.message || "Profile update failed");
-      }
-    } else if (pendingVerification) {
-      // Handle email verification
-      if (!verificationCode) {
-        setAuthError("Please enter the verification code");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const completeSignUp = await signUp.attemptEmailAddressVerification({
-          code: verificationCode
-        });
-
-        if (completeSignUp.status === "complete") {
-          await setSignUpActive({ session: completeSignUp.createdSessionId });
-          handleModalClose();
-        } else {
-          setAuthError("Verification incomplete. Please try again.");
-        }
-      } catch (error) {
-        console.error("Verification error:", error);
-        setAuthError(error.errors?.[0]?.message || "Verification failed. Please check your code.");
-      }
-    }
-    setIsLoading(false);
-  };
-
-  // Clerk logout handler
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      setIsDropdownOpen(false);
-      setIsMobileMenuOpen(false);
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
-
-  const handleTabClick = (tab) => {
-    setIsMobileMenuOpen(false);
-
-    if (tab === "car-rental") {
-      navigate("/car-rentals");
-    } else if (tab === "apartments") {
-      navigate("/");
-    }
-  };
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-    setIsDropdownOpen(false);
-  };
 
   // Password strength validation
   const getPasswordStrength = (password) => {
@@ -328,30 +95,127 @@ const Navbar = ({ showNavLinks = true }) => {
 
   const passwordStrength = getPasswordStrength(password);
 
-  // Handle forgot password with Clerk
+  const handleAuthClick = (type) => {
+    if (type === "dashboard" || type === "profile" || type === "settings") {
+      navigate(`/${type}`);
+      setIsDropdownOpen(false);
+      setIsMobileMenuOpen(false);
+      return;
+    }
+    setModalType(type);
+    setIsModalOpen(true);
+    setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    setRegisterStep(1);
+    setAuthError("");
+    setPendingVerification(false);
+    // Reset form states
+    setPassword("");
+    setConfirmPassword("");
+    setEmail("");
+    setFirstName("");
+    setLastName("");
+    setAgreeToTerms(false);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setModalType("");
+    setRegisterStep(1);
+    setAuthError("");
+    setPendingVerification(false);
+    // Reset form states
+    setPassword("");
+    setConfirmPassword("");
+    setEmail("");
+    setFirstName("");
+    setLastName("");
+    setAgreeToTerms(false);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setIsLoadingAuth(true);
+    try {
+      await loginUser({ login: email, password });
+      setIsModalOpen(false);
+      // Reset form
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      setAuthError(err.message || "Login failed. Please try again.");
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleRegisterNext = async () => {
+    if (registerStep === 1) {
+      // Validate step 1
+      if (
+        email &&
+        password &&
+        confirmPassword &&
+        password === confirmPassword &&
+        passwordStrength.isStrong
+      ) {
+        setRegisterStep(2);
+      }
+    } else if (registerStep === 2) {
+      // Handle final registration via API
+      if (firstName && lastName && agreeToTerms) {
+        setAuthError("");
+        setIsLoadingAuth(true);
+        try {
+          await registerUser({
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            password,
+          });
+          setIsModalOpen(false);
+          // Reset form
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setFirstName("");
+          setLastName("");
+          setAgreeToTerms(false);
+        } catch (err) {
+          setAuthError(err.message || "Registration failed. Please try again.");
+        } finally {
+          setIsLoadingAuth(false);
+        }
+      }
+    }
+  };
+
   const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!signInLoaded) {
-      setAuthError("Authentication not ready. Please try again.");
-      return;
-    }
-
-    if (!forgotPasswordEmail) {
-      setAuthError("Please enter your email address");
-      return;
-    }
-
+    setIsLoadingAuth(true);
+    setAuthError("");
     try {
-      await signIn.create({
-        identifier: forgotPasswordEmail,
-        strategy: "reset_password_email_code",
-      });
+      await forgotPassword(forgotPasswordEmail);
       setForgotPasswordSubmitted(true);
-      setAuthError("");
-    } catch (error) {
-      console.error("Password reset error:", error);
-      setAuthError(error.errors?.[0]?.message || "Password reset failed. Please try again.");
+    } catch (err) {
+      setAuthError(err.message || "Failed to send reset link. Please try again.");
+    } finally {
+      setIsLoadingAuth(false);
     }
   };
 
@@ -362,59 +226,26 @@ const Navbar = ({ showNavLinks = true }) => {
     setAuthError("");
   };
 
-  // Handle Google sign in with Clerk
-  const handleGoogleSignIn = async () => {
-    if (!signInLoaded) {
-      setAuthError("Authentication not ready. Please try again.");
-      return;
-    }
-
-    try {
-      await signIn.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: window.location.origin + "/sso-callback",
-        redirectUrlComplete: window.location.origin + "/",
-      });
-    } catch (error) {
-      console.error("Google sign in error:", error);
-      setAuthError(error.errors?.[0]?.message || "Google sign in failed. Please try again.");
+  const handleTabClick = (tab) => {
+    setIsMobileMenuOpen(false);
+    
+    // Use React Router navigation instead of window.location.href
+    if (tab === "car-rental") {
+      navigate("/car-rentals");
+    } else if (tab === "apartments") {
+      navigate("/");
     }
   };
 
-  // Get user avatar or initials
-  const getUserAvatar = () => {
-    if (!user) return { initials: "G", color: "#6B7280" };
-    
-    // If user has profile image URL, return it
-    if (user.imageUrl) {
-      return { imageUrl: user.imageUrl };
-    }
-    
-    // Generate initials and color
-    const firstName = user.firstName || '';
-    const lastName = user.lastName || '';
-    const email = user.emailAddresses?.[0]?.emailAddress || '';
-    
-    let initials = '';
-    if (firstName && lastName) {
-      initials = firstName.charAt(0) + lastName.charAt(0);
-    } else if (firstName) {
-      initials = firstName.charAt(0);
-    } else if (email) {
-      initials = email.charAt(0);
-    } else {
-      initials = 'U';
-    }
-    
-    // Generate consistent color based on user ID or email
-    const userId = user.id || email;
-    const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#06B6D4'];
-    const colorIndex = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
-    
-    return { initials: initials.toUpperCase(), color: colors[colorIndex] };
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+    setIsDropdownOpen(false);
   };
 
-  const userAvatar = getUserAvatar();
+  const handleGoogleSignIn = () => {
+    // Google OAuth stub — requires a valid clientId in App.jsx
+    console.log("Google sign in clicked — not configured yet");
+  };
 
   return (
     <>
@@ -424,8 +255,8 @@ const Navbar = ({ showNavLinks = true }) => {
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <Link to="/">
-              <img src={Logo} alt="Logo" className="h-10" />
+            <Link to='/'>
+                        <img src={Logo} alt="Logo" className="h-10" />
             </Link>
           </motion.div>
 
@@ -436,11 +267,10 @@ const Navbar = ({ showNavLinks = true }) => {
               <div className="flex relative p-1">
                 <motion.button
                   onClick={() => handleTabClick("apartments")}
-                  className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${
-                    activeTab === "apartments"
-                      ? "text-black font-medium"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${activeTab === "apartments"
+                    ? "text-black font-medium"
+                    : "text-gray-500 hover:text-gray-700"
+                    }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -457,11 +287,10 @@ const Navbar = ({ showNavLinks = true }) => {
 
                 <motion.button
                   onClick={() => handleTabClick("car-rental")}
-                  className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${
-                    activeTab === "car-rental"
-                      ? "text-black font-medium"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`relative z-10 px-6 py-2 flex-1 transition-all duration-300 ${activeTab === "car-rental"
+                    ? "text-black font-medium"
+                    : "text-gray-500 hover:text-gray-700"
+                    }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -479,7 +308,7 @@ const Navbar = ({ showNavLinks = true }) => {
           )}
 
           {/* Desktop Right Side */}
-          <div className="hidden md:flex bg-tertiary p-2 rounded-full items-center gap-3"  ref={dropdownRef}>
+          <div className="hidden md:flex bg-tertiary p-2 rounded-full items-center gap-3" ref={dropdownRef}>
             <div className="relative">
               <motion.button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -574,6 +403,7 @@ const Navbar = ({ showNavLinks = true }) => {
                         >
                           Sign In
                         </motion.button>
+                   
                       </>
                     )}
                   </motion.div>
@@ -581,56 +411,39 @@ const Navbar = ({ showNavLinks = true }) => {
               </AnimatePresence>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-700">
-                {isSignedIn ? 
-                  (user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "User") : 
-                  "Guest"
-                }
-              </span>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
-                {userAvatar.imageUrl ? (
-                  <img 
-                    src={userAvatar.imageUrl} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div 
-                    className="w-full h-full flex items-center justify-center text-white text-xs font-semibold"
-                    style={{ backgroundColor: userAvatar.color }}
-                  >
-                    {userAvatar.initials}
-                  </div>
-                )}
-              </div>
-            </div>
+            <motion.div 
+              className="flex items-center gap-2"
+              whileHover={{ scale: 1.02 }}
+            >
+              <motion.span 
+                className="text-sm font-medium text-gray-700"
+                animate={{ opacity: user ? 1 : 0.7 }}
+                transition={{ duration: 0.3 }}
+              >
+                {user ? user.first_name : "Guest"}
+              </motion.span>
+              <motion.img 
+                src={profile} 
+                alt="Profile" 
+                className="w-6 h-6"
+                // whileHover={{ rotate: 360 }}
+                // transition={{ duration: 0.5 }}
+              />
+            </motion.div>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden">
-                {userAvatar.imageUrl ? (
-                  <img 
-                    src={userAvatar.imageUrl} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div 
-                    className="w-full h-full flex items-center justify-center text-white text-xs font-semibold"
-                    style={{ backgroundColor: userAvatar.color }}
-                  >
-                    {userAvatar.initials}
-                  </div>
-                )}
-              </div>
-              <span className="text-sm font-semibold">
-                {isSignedIn ? 
-                  (user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || "User") : 
-                  "Guest"
-                }
+              <motion.img 
+                src={profile} 
+                alt="Profile" 
+                className="w-6 h-6"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.5 }}
+              />
+              <span className="text-sm font-medium text-gray-700 hidden sm:block">
+                {user ? user.first_name : "Guest"}
               </span>
             </div>
             <motion.button
@@ -666,11 +479,10 @@ const Navbar = ({ showNavLinks = true }) => {
               <div className="space-y-1">
                 <motion.button
                   onClick={() => handleTabClick("apartments")}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-300 ${
-                    activeTab === "apartments"
-                      ? "bg-gray-100 text-base font-medium"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-300 ${activeTab === "apartments"
+                    ? "bg-gray-100 text-base font-medium"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    }`}
                   whileHover={{ x: 4, scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   initial={{ opacity: 0, x: -20 }}
@@ -691,7 +503,7 @@ const Navbar = ({ showNavLinks = true }) => {
                   onClick={() => handleTabClick("car-rental")}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-300 ${
                     activeTab === "car-rental"
-                      ? "bg-gray-100 text-base font-medium"
+                      ? "bg-gray-100 text-bases font-medium"
                       : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
                   whileHover={{ x: 4, scale: 1.02 }}
@@ -822,33 +634,29 @@ const Navbar = ({ showNavLinks = true }) => {
                   <h3 className="text-sm font-semibold text-center">
                     Sign In To Your Account
                   </h3>
-                  <form onSubmit={handleLogin} className="space-y-3">                     
+                  <div className="w-full">
+                    <motion.div 
+                      className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
 
-                    <div className="w-full">
-                      <motion.div
-                        className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
-                        whileFocus={{ scale: 1.02 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      >
-                        <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
-                          Email
-                        </span>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="flex-1 px-3 py-[13px] text-xs focus:outline-none"
-                          placeholder="Enter your email"
-                          required
-                        />
-                      </motion.div>
-                    </div>
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
+                        Email
+                      </span>
+                      <input
+                        type="email"
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="flex-1 px-3 py-[13px] text-xs focus:outline-none"
+                        placeholder="Enter your email"
+                      />
+                    </motion.div>
+                  </div>
 
-                    <div className="w-full">
-                      <motion.div
-                        className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 relative"
-                        whileFocus={{ scale: 1.02 }}
-                        transition={{ type: "spring", stiffness: 300 }}
+                  <div className="w-full">
+                    <motion.div 
+                      className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 relative"
+
+                      transition={{ type: "spring", stiffness: 300 }}
                     >
                       {/* Left inline label with separator */}
                       <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
@@ -997,7 +805,7 @@ const Navbar = ({ showNavLinks = true }) => {
                                     <div className="w-full">
                                       <motion.div
                                         className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
-                                        whileFocus={{ scale: 1.02 }}
+
                                         transition={{
                                           type: "spring",
                                           stiffness: 300,
@@ -1098,11 +906,12 @@ const Navbar = ({ showNavLinks = true }) => {
 
                   <motion.button
                     onClick={handleLogin}
-                    className="w-full bg-primary text-white py-3 px-4 rounded-full hover:bg-opacity-80 transition-colors duration-200 font-medium text-sm"
+                    disabled={isLoadingAuth}
+                    className="w-full bg-primary text-white py-3 px-4 rounded-full hover:bg-opacity-80 transition-colors duration-200 font-medium text-sm disabled:opacity-50"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    Sign In
+                    {isLoadingAuth ? "Signing in..." : "Sign In"}
                   </motion.button>
 
                   {/* Divider */}
@@ -1141,7 +950,7 @@ const Navbar = ({ showNavLinks = true }) => {
                     </svg>
                     Continue with Google
                   </motion.button>
-    </form>
+
                 </motion.div>
               )}
 
@@ -1155,10 +964,15 @@ const Navbar = ({ showNavLinks = true }) => {
                 >
                   {registerStep === 1 && (
                     <>
+                      {authError && (
+                        <div className="bg-red-50 text-red-600 p-2 text-xs rounded mb-2">
+                          {authError}
+                        </div>
+                      )}
                       <div className="w-full">
                         <motion.div
                           className="flex items-center border border-gray-300 rounded-full overflow-hidden focus-within:ring-2 focus-within:ring-blue-500"
-                          whileFocus={{ scale: 1.02 }}
+
                         >
                           <span className="px-4 text-sm text-gray-500 border-r border-gray-300">
                             Email
@@ -1240,13 +1054,12 @@ const Navbar = ({ showNavLinks = true }) => {
                                 Password Strength:
                               </span>
                               <span
-                                className={`text-sm font-medium ${
-                                  passwordStrength.strength === "Strong"
-                                    ? "text-green-600"
-                                    : passwordStrength.strength === "Medium"
+                                className={`text-sm font-medium ${passwordStrength.strength === "Strong"
+                                  ? "text-green-600"
+                                  : passwordStrength.strength === "Medium"
                                     ? "text-yellow-600"
                                     : "text-red-600"
-                                }`}
+                                  }`}
                               >
                                 {passwordStrength.strength}
                               </span>
@@ -1416,6 +1229,12 @@ const Navbar = ({ showNavLinks = true }) => {
 
                   {registerStep === 2 && (
                     <>
+                      {authError && (
+                        <div className="bg-red-50 text-red-600 p-2 text-xs rounded mb-2 w-full text-center">
+                          {authError}
+                        </div>
+                      )}
+
                       <div className="text-center mb-4">
                         <h3 className="text-md font-semibold text-gray-800">
                           Complete Your Profile
@@ -1496,10 +1315,10 @@ const Navbar = ({ showNavLinks = true }) => {
                         </button>
                         <button
                           onClick={handleRegisterNext}
-                          disabled={!firstName || !lastName || !agreeToTerms}
+                          disabled={!firstName || !lastName || !agreeToTerms || isLoadingAuth}
                           className="flex-1 bg-primary text-white py-3 px-4 rounded-full hover:bg-opacity-80 transition-colors duration-200 font-medium text-base disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
-                          Create Account
+                          {isLoadingAuth ? "Creating..." : "Create Account"}
                         </button>
                       </div>
                     </>

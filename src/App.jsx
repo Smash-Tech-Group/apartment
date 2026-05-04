@@ -3,7 +3,8 @@ import React, { useRef } from 'react';
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import HomePage from "./pages/homePage";
 import CarRentals from "./pages/carRentals"
-import PropertyDetail from './pages/detail'; 
+
+import PropertyDetail from './components/PropertyDetail';
 import { PropertyProvider } from './context/PropertyContext';
 import { CarProvider } from './context/CarContext';
 import Dashboard from './components/Dashboard';
@@ -12,6 +13,7 @@ import PasswordSecurity from './components/PasswordSecurity';
 import NotFound from './components/NotFound';
 import ManageStays from './components/ManageStays';
 import { WizardProvider } from './context/WizardContext';
+import { AuthProvider } from './context/AuthContext';
 import Basic from './pages/upload/Basic';
 import Location from './pages/upload/Location';
 import Photos from './pages/upload/Photos';
@@ -39,50 +41,52 @@ import CarsRental from "./components/CarsRental";
 function App() {
   return (
     <GoogleOAuthProvider clientId="">
-          <PropertyProvider>
-            <CarProvider>
-        <WizardProvider>
-        <Routes>
+      <AuthProvider>
+        <PropertyProvider>
+          <CarProvider>
+            <WizardProvider>
+              <Routes>
 
-          <Route path="/" element={<HomePage />} />
-          <Route path="/car-rentals" element={<CarRentals />} />
-          <Route path="/property/:id" element={<PropertyDetail />} />
-          <Route path="/car/:id" element={<PropertyDetail />} />
-          <Route path="/dashboard/" element={<Dashboard />} />
-          <Route path="/details/" element={<PersonalDetail />} />
-          <Route path="/password-security/" element={<PasswordSecurity />} />
-          <Route path="/manage-stays/" element={<ManageStays />} />
-          <Route path="/upload/basic" element={<Basic />} />
-          <Route path="/upload/location" element={<Location />} />
-          <Route path="/upload/photos" element={<Photos />} />
-          <Route path="/upload/features" element={<Features />} />
-          <Route path="/upload/review" element={<Review />} />
-          <Route path="/upload/complete" element={<Complete />} />
-          <Route path="/upload/success" element={<Success />} />
-          <Route path="/manage-stays-populate" element={<ManageStaysPopulate />} />
-          <Route path="/manage-rides" element={<ManageRides />} />
-          <Route path="/upload-rides/basic" element={<BasicRide />} />
-          <Route path="/upload-rides/location" element={<LocationRide />} />
-          <Route path="/upload-rides/photos" element={<PhotosRide />} />
-          <Route path="/upload-rides/features" element={<FeaturesRide />} />
-          <Route path="/upload-rides/review" element={<ReviewRide />} />
-          <Route path="/upload-rides/complete" element={<CompleteRide />} />
-          <Route path="/upload-rides/success" element={<SuccessRide />} />
-          <Route path="/id-verify" element={<IdVerify />} />
-          <Route path="/upload-id" element={<UploadId />} />
-          <Route path="/payment" element={<Payment />} />
-          <Route path="/payment-history" element={<PaymentHistory />} />
-          <Route path="/favourites" element={<Favourites />} />
-          <Route path="/reviews" element={<Reviews />} />
-          <Route path="/stays" element={<Stays />} />
-          <Route path="/carsrental" element={<CarsRental />} />
-          <Route path="*" element={<NotFound />} />
-          
+                <Route path="/" element={<HomePage />} />
+                <Route path="/car-rentals" element={<CarRentals />} />
+                <Route path="/property/:id" element={<PropertyDetail />} />
+                <Route path="/car/:id" element={<PropertyDetail />} />
+                <Route path="/dashboard/" element={<Dashboard />} />
+                <Route path="/details/" element={<PersonalDetail />} />
+                <Route path="/password-security/" element={<PasswordSecurity />} />
+                <Route path="/manage-stays/" element={<ManageStays />} />
+                <Route path="/upload/basic" element={<Basic />} />
+                <Route path="/upload/location" element={<Location />} />
+                <Route path="/upload/photos" element={<Photos />} />
+                <Route path="/upload/features" element={<Features />} />
+                <Route path="/upload/review" element={<Review />} />
+                <Route path="/upload/complete" element={<Complete />} />
+                <Route path="/upload/success" element={<Success />} />
+                <Route path="/manage-stays-populate" element={<ManageStaysPopulate />} />
+                <Route path="/manage-rides" element={<ManageRides />} />
+                <Route path="/upload-rides/basic" element={<BasicRide />} />
+                <Route path="/upload-rides/location" element={<LocationRide />} />
+                <Route path="/upload-rides/photos" element={<PhotosRide />} />
+                <Route path="/upload-rides/features" element={<FeaturesRide />} />
+                <Route path="/upload-rides/review" element={<ReviewRide />} />
+                <Route path="/upload-rides/complete" element={<CompleteRide />} />
+                <Route path="/upload-rides/success" element={<SuccessRide />} />
+                <Route path="/id-verify" element={<IdVerify />} />
+                <Route path="/upload-id" element={<UploadId />} />
+                <Route path="/payment" element={<Payment />} />
+                <Route path="/payment-history" element={<PaymentHistory />} />
+                <Route path="/favourites" element={<Favourites />} />
+                <Route path="/reviews" element={<Reviews />} />
+                <Route path="/stays" element={<Stays />} />
+                <Route path="/carsrental" element={<CarsRental />} />
+                <Route path="*" element={<NotFound />} />
 
-        </Routes>
-        </WizardProvider>
-        </CarProvider>
-    </PropertyProvider>
+
+              </Routes>
+            </WizardProvider>
+          </CarProvider>
+        </PropertyProvider>
+      </AuthProvider>
     </GoogleOAuthProvider>
   );
 }

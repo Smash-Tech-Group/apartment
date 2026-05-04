@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 import house1 from "../assets/house1.webp"
 import house2 from "../assets/house2.webp"
@@ -97,7 +97,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Gwarinpa, Abuja',
         posted: 'Posted 1 month ago',
         amount: 45000,
-        rating: 4.8, 
+        rating: 4.8,
         isNew: true,
         description: 'Beautiful 2-bedroom apartment in the heart of Gwarinpa. This modern apartment features spacious rooms, contemporary finishes, and excellent amenities. Perfect for comfortable living with easy access to shopping centers, schools, and transportation.',
         amenities: [
@@ -120,7 +120,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Maitama, Abuja',
         posted: 'Posted 3 weeks ago',
         amount: 65000,
-        rating: 4.6, 
+        rating: 4.6,
         isNew: false,
         description: 'Luxury 3-bedroom apartment in prestigious Maitama district. Features high-end finishes, panoramic city views, and premium amenities.',
         amenities: [
@@ -139,7 +139,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Wuse 2, Abuja',
         posted: 'Posted 2 weeks ago',
         amount: 35000,
-        rating: 4.5, 
+        rating: 4.5,
         isNew: true,
         description: 'Cozy 1-bedroom apartment perfect for young professionals. Modern design with all essential amenities in a prime location.',
         amenities: [
@@ -158,7 +158,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Garki, Abuja',
         posted: 'Posted 1 week ago',
         amount: 25000,
-        rating: 4.3, 
+        rating: 4.3,
         isNew: true,
         description: 'Modern studio apartment with open-plan design. Perfect for singles or couples looking for a stylish and affordable living space.',
         amenities: [
@@ -175,7 +175,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Asokoro, Abuja',
         posted: 'Posted 2 months ago',
         amount: 40000,
-        rating: 4.7, 
+        rating: 4.7,
         isNew: false,
         description: 'Luxury studio in exclusive Asokoro. High-end finishes and premium amenities in a prestigious neighborhood.',
         amenities: [
@@ -194,7 +194,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Kubwa, Abuja',
         posted: 'Posted 1 month ago',
         amount: 20000,
-        rating: 4.2, 
+        rating: 4.2,
         isNew: false,
         description: 'Affordable and cozy studio apartment in Kubwa. Great for budget-conscious individuals seeking comfort.',
         amenities: [
@@ -213,7 +213,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Gwarinpa, Abuja',
         posted: 'Posted 2 months ago',
         amount: 85000,
-        rating: 4.9, 
+        rating: 4.9,
         isNew: false,
         description: 'Spacious 4-bedroom duplex with modern design. Perfect for large families with ample space and premium amenities.',
         amenities: [
@@ -232,7 +232,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Maitama, Abuja',
         posted: 'Posted 1 month ago',
         amount: 120000,
-        rating: 4.8, 
+        rating: 4.8,
         isNew: true,
         description: 'Luxurious 5-bedroom duplex in prime Maitama location. Exceptional space and high-end finishes throughout.',
         amenities: [
@@ -252,7 +252,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Jahi, Abuja',
         posted: 'Posted 3 weeks ago',
         amount: 70000,
-        rating: 4.6, 
+        rating: 4.6,
         isNew: true,
         description: 'Beautiful 3-bedroom duplex in the developing Jahi district. Modern amenities with great value for money.',
         amenities: [
@@ -272,7 +272,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Lugbe, Abuja',
         posted: 'Posted 1 month ago',
         amount: 50000,
-        rating: 4.4, 
+        rating: 4.4,
         isNew: true,
         description: 'Charming 3-bedroom bungalow with private compound. Perfect for families who prefer single-level living.',
         amenities: [
@@ -291,7 +291,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Kuje, Abuja',
         posted: 'Posted 2 weeks ago',
         amount: 35000,
-        rating: 4.1, 
+        rating: 4.1,
         isNew: true,
         description: 'Cozy 2-bedroom bungalow in peaceful Kuje area. Great for small families seeking tranquility.',
         amenities: [
@@ -309,7 +309,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Gwagwalada, Abuja',
         posted: 'Posted 3 months ago',
         amount: 60000,
-        rating: 4.3, 
+        rating: 4.3,
         isNew: false,
         description: 'Spacious 4-bedroom bungalow with large compound. Ideal for large families who value space and privacy.',
         amenities: [
@@ -330,7 +330,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Central Area, Abuja',
         posted: 'Posted 1 week ago',
         amount: 15000,
-        rating: 4.7, 
+        rating: 4.7,
         isNew: true,
         description: 'Luxury hotel room in the heart of Abuja. Perfect for business travelers and short stays.',
         amenities: [
@@ -349,7 +349,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Garki, Abuja',
         posted: 'Posted 2 days ago',
         amount: 25000,
-        rating: 4.5, 
+        rating: 4.5,
         isNew: false,
         description: 'Business hotel suite with work area and premium amenities. Ideal for extended business stays.',
         amenities: [
@@ -367,7 +367,7 @@ export const PropertyProvider = ({ children }) => {
         location: 'Wuse, Abuja',
         posted: 'Posted 1 week ago',
         amount: 8000,
-        rating: 4.0, 
+        rating: 4.0,
         isNew: true,
         description: 'Affordable hotel room with essential amenities. Great value for budget-conscious travelers.',
         amenities: [
@@ -389,7 +389,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Gwarinpa, Abuja',
       posted: 'Posted 2 months ago',
       amount: 55000,
-      rating: 6.0, 
+      rating: 6.0,
       isNew: false,
       description: 'Spacious 4-bedroom duplex with modern amenities and beautiful garden. Perfect for families looking for comfort and luxury.',
       amenities: [
@@ -408,7 +408,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Maitama, Abuja',
       posted: 'Posted 1 month ago',
       amount: 75000,
-      rating: 5.8, 
+      rating: 5.8,
       isNew: true,
       description: 'Premium 2-bedroom apartment in exclusive Maitama. High-end finishes and exceptional location.',
       amenities: [
@@ -427,7 +427,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Asokoro, Abuja',
       posted: 'Posted 3 weeks ago',
       amount: 90000,
-      rating: 5.9, 
+      rating: 5.9,
       isNew: false,
       description: 'Luxury 3-bedroom bungalow in prestigious Asokoro. Private garden and premium amenities.',
       amenities: [
@@ -446,7 +446,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Wuse 2, Abuja',
       posted: 'Posted 1 week ago',
       amount: 45000,
-      rating: 5.7, 
+      rating: 5.7,
       isNew: false,
       description: 'High-end studio apartment with modern design and premium amenities in central location.',
       amenities: [
@@ -465,7 +465,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Jahi, Abuja',
       posted: 'Posted 2 weeks ago',
       amount: 110000,
-      rating: 6.0, 
+      rating: 6.0,
       isNew: true,
       description: 'Magnificent 5-bedroom duplex with exceptional space and luxury finishes throughout.',
       amenities: [
@@ -485,7 +485,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Garki, Abuja',
       posted: 'Posted 1 month ago',
       amount: 52000,
-      rating: 4.8, 
+      rating: 4.8,
       isNew: true,
       description: 'Modern 3-bedroom apartment with contemporary design and excellent amenities.',
       amenities: [
@@ -503,7 +503,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Kubwa, Abuja',
       posted: 'Posted 3 weeks ago',
       amount: 38000,
-      rating: 4.5, 
+      rating: 4.5,
       isNew: false,
       description: 'Affordable 2-bedroom duplex offering great value and comfortable living space.',
       amenities: [
@@ -521,7 +521,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Central Area, Abuja',
       posted: 'Posted 1 week ago',
       amount: 35000,
-      rating: 4.6, 
+      rating: 4.6,
       isNew: true,
       description: 'Executive studio apartment in prime central location. Perfect for professionals.',
       amenities: [
@@ -539,7 +539,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Lugbe, Abuja',
       posted: 'Posted 2 weeks ago',
       amount: 65000,
-      rating: 4.7, 
+      rating: 4.7,
       isNew: false,
       description: 'Large 4-bedroom bungalow with spacious compound and family-friendly amenities.',
       amenities: [
@@ -558,7 +558,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Wuse, Abuja',
       posted: 'Posted 1 month ago',
       amount: 28000,
-      rating: 4.3, 
+      rating: 4.3,
       isNew: true,
       description: 'Compact 1-bedroom apartment perfect for singles. Modern amenities in convenient location.',
       amenities: [
@@ -575,7 +575,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Maitama, Abuja',
       posted: 'Posted 2 months ago',
       amount: 85000,
-      rating: 4.9, 
+      rating: 4.9,
       isNew: false,
       description: 'Premium 3-bedroom duplex in exclusive Maitama with luxury finishes and amenities.',
       amenities: [
@@ -595,7 +595,7 @@ export const PropertyProvider = ({ children }) => {
       location: 'Asokoro, Abuja',
       posted: 'Posted 1 week ago',
       amount: 150000,
-      rating: 5.0, 
+      rating: 5.0,
       isNew: true,
       description: 'Luxurious penthouse suite with panoramic city views. The ultimate in luxury living.',
       amenities: [
@@ -616,22 +616,22 @@ export const PropertyProvider = ({ children }) => {
   // Function to get property by ID from all sources
   const getPropertyById = (id) => {
     const numericId = parseInt(id);
-    
+
     // Search in categorized properties
     for (const category of Object.values(allProperties)) {
       const property = category.find(p => p.id === numericId);
       if (property) return property;
     }
-    
+
     // Search in explore properties
     const exploreProperty = exploreProperties.find(p => p.id === numericId);
     if (exploreProperty) return exploreProperty;
-    
+
     return null;
   };
 
-  // Function to toggle like status
-  const toggleLike = (propertyId) => {
+  // Function to toggle like status — stable reference via useCallback
+  const toggleLike = useCallback((propertyId) => {
     setLikedProperties(prev => {
       const newLiked = new Set(prev);
       if (newLiked.has(propertyId)) {
@@ -641,14 +641,14 @@ export const PropertyProvider = ({ children }) => {
       }
       return newLiked;
     });
-  };
+  }, []);
 
-  // Function to check if property is liked
-  const isPropertyLiked = (propertyId) => {
+  // Function to check if property is liked — stable reference via useCallback
+  const isPropertyLiked = useCallback((propertyId) => {
     return likedProperties.has(propertyId);
-  };
+  }, [likedProperties]);
 
-  const value = {
+  const value = useMemo(() => ({
     allProperties,
     exploreProperties,
     likedProperties,
@@ -656,7 +656,7 @@ export const PropertyProvider = ({ children }) => {
     getPropertyById,
     toggleLike,
     isPropertyLiked
-  };
+  }), [allProperties, exploreProperties, likedProperties, toggleLike, isPropertyLiked]);
 
   return (
     <PropertyContext.Provider value={value}>

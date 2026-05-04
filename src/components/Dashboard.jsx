@@ -18,52 +18,60 @@ import CookieIcon from "../assets/icons/14.svg";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import signout from "../assets/signout.svg";
 import Navbar from './Navbar';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
+  const { user, logoutUser } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await logoutUser();
+    navigate('/');
+  };
   const sections = [
     {
       title: "Manage Account",
       color: "orange",
       items: [
         { icon: UserIcon, text: "Personal Details", link: "/details" },
-        { icon: LockIcon, text: "Password & Security", link: "/password-security"  },
-        { icon: HomeIcon, text: "Manage Stays", link: "/manage-stays"  },
-        { icon: CarIcon, text: "Manage Rides", link: "/manage-rides"  }
+        { icon: LockIcon, text: "Password & Security", link: "/password-security" },
+        { icon: HomeIcon, text: "Manage Stays", link: "/manage-stays" },
+        { icon: CarIcon, text: "Manage Rides", link: "/manage-rides" }
       ]
     },
     {
       title: "Booking Activity",
       color: "orange",
       items: [
-        { icon: HomeIcon, text: "Stays", link: "/stays"  },
-        { icon: CarIcon, text: "Car Rentals", link: "/carsrental"  },
-        { icon: HeartIcon, text: "Favorites", link: "/favourites"  },
-        { icon: MessageCircleIcon, text: "My Reviews", link: "/reviews"  }
+        { icon: HomeIcon, text: "Stays", link: "/stays" },
+        { icon: CarIcon, text: "Car Rentals", link: "/carsrental" },
+        { icon: HeartIcon, text: "Favorites", link: "/favourites" },
+        { icon: MessageCircleIcon, text: "My Reviews", link: "/reviews" }
       ]
     },
     {
       title: "Legal & Privacy",
       color: "orange",
       items: [
-        { icon: PenPaper, text: "Terms of Use", link: "/terms-of-use"  },
-        { icon: ShieldCheckIcon, text: "Privacy Policy", link: "/privacy"  },
-        { icon: CookieIcon, text: "Cookies Policy", link: "/cookies"  }
+        { icon: PenPaper, text: "Terms of Use", link: "/terms-of-use" },
+        { icon: ShieldCheckIcon, text: "Privacy Policy", link: "/privacy" },
+        { icon: CookieIcon, text: "Cookies Policy", link: "/cookies" }
       ]
     },
     {
       title: "Help & Support",
       color: "orange",
       items: [
-        { icon: HelpCircleIcon, text: "Contact Customer Support", link: "/customer-support"  },
-        { icon: BookOpenIcon, text: "Helpful Articles", link: "/helpful"  }
+        { icon: HelpCircleIcon, text: "Contact Customer Support", link: "/customer-support" },
+        { icon: BookOpenIcon, text: "Helpful Articles", link: "/helpful" }
       ]
     },
     {
       title: "Payments",
       color: "orange",
       items: [
-        { icon: CreditCardIcon, text: "Payment Methods", link: "/payment"  },
-        { icon: FileTextIcon, text: "Payment History", link: "/payment-history"  }
+        { icon: CreditCardIcon, text: "Payment Methods", link: "/payment" },
+        { icon: FileTextIcon, text: "Payment History", link: "/payment-history" }
       ]
     }
   ];
@@ -74,16 +82,21 @@ export default function Dashboard() {
       <Navbar showNavLinks={false} />
 
       <div className="min-h-screen bg-white pt-20">
-        
+
         <main className="max-w-7xl mx-auto px-10 sm:px-6 py-12 pt-20">
           {/* Welcome Section */}
           <div className="mb-12 flex justify-between items-start">
             <div>
-              <h1 className="text-4xl font-semibold text-[#333333] mb-2">Hi, Hamsah</h1>
+              <h1 className="text-4xl font-semibold text-[#333333] mb-2">
+                Hi, {user ? (user.first_name || user.name || user.username || "User") : "Guest"}
+              </h1>
               <p className="text-2xl font-light text-gray-600">Welcome To Your Account</p>
             </div>
-            <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors">
-              <img src={signout} alt="Logo" className="h-5 w-5" />
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <img src={signout} alt="Sign out" className="h-5 w-5" />
               <span className="underline hidden md:flex">Sign Out</span>
             </button>
           </div>
@@ -96,7 +109,7 @@ export default function Dashboard() {
           </div>
         </main>
 
-              {/* make component */}
+        {/* make component */}
         <footer className="mt-12 sm:mt-16 text-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
@@ -107,7 +120,7 @@ export default function Dashboard() {
               <p className="hover:text-gray-900 transition-colors cursor-pointer">Terms of Use</p>
             </div>
           </div>
-      </footer>
+        </footer>
       </div>
     </>
   );

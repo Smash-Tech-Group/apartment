@@ -94,7 +94,7 @@ const HomeBookings = () => {
             background: 'linear-gradient(rgba(255, 125, 1, 0.1), rgba(255, 125, 1, 0.1))'
           }}
         />
-        <style jsx>{`
+        <style>{`
           @keyframes slowZoom {
             0% {
               transform: scale(1);

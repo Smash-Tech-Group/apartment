@@ -52,7 +52,7 @@ const CarBookings = () => {
           }}
         />
 
-        <style jsx>{`
+        <style>{`
           @keyframes slowZoom {
             0% {
               transform: scale(1);

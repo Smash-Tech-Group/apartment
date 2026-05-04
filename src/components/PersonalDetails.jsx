@@ -9,16 +9,25 @@ import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import FullNameModal from './FullNameModal';
 import PhoneNumberModal from './PhoneNumberModal';
 import EmailAddressModal from './EmailAddressModal';
+import { useAuth } from '../context/AuthContext';
 
 export default function PersonalDetails() {
+  const { user, logoutUser } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await logoutUser();
+    navigate('/');
+  };
+
   const [showFullNameModal, setShowFullNameModal] = useState(false);
   const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false);
   const [showEmailAddressModal, setShowEmailAddressModal] = useState(false);
 
-  // Current user data - in a real app, this would come from state/API
-  const currentFullName = "Hamsah Yusuf";
-  const currentEmail = "HamsahYusuf917@gmail.com";
-  const currentPhoneNumber = ""; // Empty since it says "Add Your Phone Number"
+  // Current user data - using global state instead of hardcoded
+  const currentFullName = user ? (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.name || user.username) : "";
+  const currentEmail = user?.email || "";
+  const currentPhoneNumber = user?.phone_number || "";
 
   return (
     <div className="min-h-screen bg-white">
@@ -43,7 +52,7 @@ export default function PersonalDetails() {
               {/* Full Name */}
               <DetailRow
                 label="Full Name"
-                value="Hamsah Yusuf"
+                value={currentFullName || "Add Your Name"}
                 action="Update"
                 onClick={() => setShowFullNameModal(true)}
               />
@@ -51,7 +60,7 @@ export default function PersonalDetails() {
               {/* Email Address */}
               <DetailRow
                 label="Email Address"
-                value="HamsahYusuf917@gmail.com"
+                value={currentEmail || "Add Your Email"}
                 action="Update"
                 verified={true}
                 description="This is the email address you use to sign in. It's also where we send your booking confirmations."
@@ -61,7 +70,7 @@ export default function PersonalDetails() {
               {/* Phone Number */}
               <DetailRow
                 label="Phone Number"
-                value="Add Your Phone Number"
+                value={currentPhoneNumber || "Add Your Phone Number"}
                 action="Add"
                 placeholder={true}
                 description="Properties or attractions you book will use this number if they need to contact you."
@@ -93,7 +102,7 @@ export default function PersonalDetails() {
           {/* Right More Actions */}
           <div className="w-full lg:w-72 xl:w-80 flex-shrink-0">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">More Actions</h2>
-          
+
             <div className="bg-white border border-[#3333331A] rounded-xl overflow-hidden shadow-sm">
               <ActionItem link="/password-security" icon={LockIcon} text="Password & Security" />
               <ActionItem link="/payment " icon={PaymentIcon} text="Payment Methods" />
@@ -151,7 +160,7 @@ function DetailRow({ label, link, value, action, verified, placeholder, descript
       {action}
     </Link>
   ) : (
-    <button 
+    <button
       onClick={handleActionClick}
       className="text-gray-900 font-medium underline hover:text-orange-500 transition-colors flex-shrink-0"
     >
@@ -164,7 +173,7 @@ function DetailRow({ label, link, value, action, verified, placeholder, descript
       {action}
     </Link>
   ) : (
-    <button 
+    <button
       onClick={handleActionClick}
       className="text-gray-900 font-medium underline hover:text-orange-500 transition-colors text-sm flex-shrink-0"
     >
