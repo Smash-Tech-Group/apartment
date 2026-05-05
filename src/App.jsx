@@ -37,6 +37,9 @@ import Favourites from './components/Favourites';
 import Reviews from './components/Reviews';
 import Stays from './components/Stays';
 import CarsRental from "./components/CarsRental";
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminFavorites from './components/admin/AdminFavorites';
+import VendorFavorites from './components/vendor/VendorFavorites';
 function App() {
   return (
     <GoogleOAuthProvider clientId="">
@@ -78,6 +81,17 @@ function App() {
                 <Route path="/reviews" element={<Reviews />} />
                 <Route path="/stays" element={<Stays />} />
                 <Route path="/carsrental" element={<CarsRental />} />
+                <Route path="/admin/favorites" element={
+                  <ProtectedRoute roles={["admin"]}>
+                    <AdminFavorites />
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/vendor/favorites" element={
+                  <ProtectedRoute roles={["vendor", "admin"]}>
+                    <VendorFavorites />
+                  </ProtectedRoute>
+                } />
                 <Route path="*" element={<NotFound />} />
 
 
