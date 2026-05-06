@@ -14,6 +14,7 @@ import NotFound from './components/NotFound';
 import ManageStays from './components/ManageStays';
 import { WizardProvider } from './context/WizardContext';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './components/Toast';
 import Basic from './pages/upload/Basic';
 import Location from './pages/upload/Location';
 import Photos from './pages/upload/Photos';
@@ -38,10 +39,13 @@ import Favourites from './components/Favourites';
 import Reviews from './components/Reviews';
 import Stays from './components/Stays';
 import CarsRental from "./components/CarsRental";
+import CustomerSupport from './components/CustomerSupport';
+import HelpfulArticles from './components/HelpfulArticles';
 function App() {
   return (
     <GoogleOAuthProvider clientId="">
       <AuthProvider>
+        <ToastProvider>
         <PropertyProvider>
           <CarProvider>
             <WizardProvider>
@@ -79,6 +83,8 @@ function App() {
                 <Route path="/reviews" element={<Reviews />} />
                 <Route path="/stays" element={<Stays />} />
                 <Route path="/carsrental" element={<CarsRental />} />
+                <Route path="/customer-support" element={<CustomerSupport />} />
+                <Route path="/helpful" element={<HelpfulArticles />} />
                 <Route path="*" element={<NotFound />} />
 
 
@@ -86,6 +92,7 @@ function App() {
             </WizardProvider>
           </CarProvider>
         </PropertyProvider>
+        </ToastProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   );

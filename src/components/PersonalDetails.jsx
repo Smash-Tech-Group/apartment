@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Navbar from './Navbar';
 import LockIcon from "../assets/icons/2.svg";
 import PaymentIcon from "../assets/icons/9.svg";
@@ -10,10 +10,15 @@ import FullNameModal from './FullNameModal';
 import PhoneNumberModal from './PhoneNumberModal';
 import EmailAddressModal from './EmailAddressModal';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from './Toast';
+import { apiFetch, BASE_URL } from '../lib/api';
+import { getAccessToken } from '../lib/auth';
 
 export default function PersonalDetails() {
-  const { user, logoutUser } = useAuth();
+  const { user, logoutUser, refreshUser } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const handleSignOut = async () => {
     await logoutUser();
@@ -23,11 +28,77 @@ export default function PersonalDetails() {
   const [showFullNameModal, setShowFullNameModal] = useState(false);
   const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false);
   const [showEmailAddressModal, setShowEmailAddressModal] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState(null); // instant local preview
 
-  // Current user data - using global state instead of hardcoded
   const currentFullName = user ? (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.name || user.username) : "";
   const currentEmail = user?.email || "";
   const currentPhoneNumber = user?.phone_number || "";
+
+  // Show local preview immediately while uploading, fall back to saved URL, then initials
+  const avatarUrl = avatarPreview || user?.avatar_url || null;
+
+  const handleAvatarClick = () => {
+    setAvatarError('');
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError('Invalid file format. Allowed: jpg, png, webp.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('File too large. Maximum size is 5MB.');
+      return;
+    }
+
+    // Show instant local preview before upload starts
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target.result);
+    reader.readAsDataURL(file);
+
+    setAvatarLoading(true);
+    setAvatarError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Use raw fetch — apiFetch always injects Content-Type: application/json which
+      // breaks multipart uploads. Raw fetch lets the browser set the correct
+      // multipart/form-data boundary automatically.
+      const token = getAccessToken();
+      const response = await fetch(`${BASE_URL}/users/upload-avatar`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || 'Upload failed.');
+      }
+
+      await refreshUser();
+      showToast('Profile photo updated successfully.');
+      // /auth/me now returns avatar_url — the real saved URL is in context.
+      // Clear the local preview so the context value takes over cleanly.
+      setAvatarPreview(null);
+    } catch (err) {
+      setAvatarPreview(null); // revert preview on failure
+      setAvatarError(err.message || 'Failed to upload photo. Please try again.');
+      showToast(err.message || 'Failed to upload photo.', 'error');
+    } finally {
+      setAvatarLoading(false);
+      // Reset input so same file can be re-selected if needed
+      e.target.value = '';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -44,11 +115,85 @@ export default function PersonalDetails() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 xl:gap-12">
-          {/* Left Section- Details Form */}
+          {/* Left Section - Details Form */}
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 mb-6 sm:mb-8">Personal Details</h1>
 
             <div className="space-y-0">
+
+              {/* Profile Photo — same DetailRow pattern, avatar preview inline */}
+              <div className="border-b border-gray-100 py-5 sm:py-6">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+
+                {/* Desktop layout */}
+                <div className="hidden sm:flex sm:items-start sm:justify-between gap-4">
+                  <div className="flex items-start gap-4 lg:gap-6 flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 w-36 lg:w-44 flex-shrink-0 pt-0.5">Profile Photo</h3>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        {/* Avatar preview */}
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-[#FF7D011A] flex-shrink-0 flex items-center justify-center">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[#FF7D01] text-sm font-semibold">
+                              {user?.first_name?.[0] || user?.email?.[0] || '?'}
+                            </span>
+                          )}
+                        </div>
+                        <span className={avatarUrl ? "text-gray-700 break-words" : "text-gray-400 break-words"}>
+                          {avatarLoading ? 'Uploading...' : avatarUrl ? 'Profile photo uploaded' : 'Add a profile photo'}
+                        </span>
+                      </div>
+                      {avatarError && <p className="text-sm text-red-500 mt-1">{avatarError}</p>}
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleAvatarClick}
+                    disabled={avatarLoading}
+                    className="text-gray-900 font-medium underline hover:text-orange-500 transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {avatarUrl ? 'Update' : 'Add'}
+                  </button>
+                </div>
+
+                {/* Mobile layout */}
+                <div className="sm:hidden space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-gray-900 text-sm">Profile Photo</h3>
+                    <button
+                      onClick={handleAvatarClick}
+                      disabled={avatarLoading}
+                      className="text-gray-900 font-medium underline hover:text-orange-500 transition-colors text-sm flex-shrink-0 disabled:opacity-50"
+                    >
+                      {avatarUrl ? 'Update' : 'Add'}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#FF7D011A] flex-shrink-0 flex items-center justify-center">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[#FF7D01] text-sm font-semibold">
+                          {user?.first_name?.[0] || user?.email?.[0] || '?'}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-sm ${avatarUrl ? "text-gray-700" : "text-gray-400"}`}>
+                      {avatarLoading ? 'Uploading...' : avatarUrl ? 'Profile photo uploaded' : 'Add a profile photo'}
+                    </span>
+                  </div>
+                  {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
+                </div>
+              </div>
+
               {/* Full Name */}
               <DetailRow
                 label="Full Name"
@@ -113,7 +258,7 @@ export default function PersonalDetails() {
         </div>
       </main>
 
-      {/* make component Footer */}
+      {/* Footer */}
       <footer className="mt-12 sm:mt-16 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
@@ -154,7 +299,6 @@ function DetailRow({ label, link, value, action, verified, placeholder, descript
     }
   };
 
-  // If link is provided, use Link component; otherwise use button with onClick
   const ActionElement = link ? (
     <Link to={link} className="text-gray-900 font-medium underline hover:text-orange-500 transition-colors flex-shrink-0">
       {action}
@@ -184,62 +328,38 @@ function DetailRow({ label, link, value, action, verified, placeholder, descript
   return (
     <div className="border-b border-gray-100 py-5 sm:py-6">
       <div className="hidden sm:flex sm:items-start sm:justify-between gap-4">
-        {/* Left Side */}
         <div className="flex items-start gap-4 lg:gap-6 flex-1 min-w-0">
-          {/* Label */}
           <h3 className="font-semibold text-gray-900 w-36 lg:w-44 flex-shrink-0 pt-0.5">
             {label}
           </h3>
-
-          {/* Value + Description */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span
-                className={
-                  placeholder ? "text-gray-400 break-words" : "text-gray-700 break-words"
-                }
-              >
+              <span className={placeholder ? "text-gray-400 break-words" : "text-gray-700 break-words"}>
                 {value}
               </span>
               {verified && <img src={Check} alt="verified" className="w-5 h-5 flex-shrink-0" />}
             </div>
             {description && (
-              <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                {description}
-              </p>
+              <p className="text-sm text-gray-500 mt-2 leading-relaxed">{description}</p>
             )}
           </div>
         </div>
-
-        {/* Right Side: Action Button */}
         {ActionElement}
       </div>
 
-      {/* Mobile Layout*/}
       <div className="sm:hidden space-y-3">
-        {/* Row 1: Label and Action */}
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-semibold text-gray-900 text-sm">{label}</h3>
           {MobileActionElement}
         </div>
-
-        {/* Row 2: Value & Verified Icon */}
         <div className="flex items-center gap-2">
-          <span
-            className={
-              placeholder ? "text-gray-400 break-words text-sm" : "text-gray-700 break-words text-sm"
-            }
-          >
+          <span className={placeholder ? "text-gray-400 break-words text-sm" : "text-gray-700 break-words text-sm"}>
             {value}
           </span>
           {verified && <img src={Check} alt="verified" className="w-5 h-5 flex-shrink-0" />}
         </div>
-
-        {/* Row 3: Description */}
         {description && (
-          <p className="text-xs text-gray-500 leading-relaxed">
-            {description}
-          </p>
+          <p className="text-xs text-gray-500 leading-relaxed">{description}</p>
         )}
       </div>
     </div>

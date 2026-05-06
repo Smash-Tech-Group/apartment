@@ -14,10 +14,8 @@ export const AuthProvider = ({ children }) => {
                 try {
                     await refreshToken();
                     const userData = await getCurrentUser();
-                    // Assumes the backend returns { success: true, data: { ...user fields } }
                     setUser(userData?.data || userData);
                 } catch (e) {
-                    // Remain unauthenticated silently
                     console.error("Silent auth failed");
                 }
             }
@@ -25,7 +23,6 @@ export const AuthProvider = ({ children }) => {
         };
         initAuth();
 
-        // Listen to custom logout events
         const handleAuthClear = () => setUser(null);
         window.addEventListener('auth:clear', handleAuthClear);
         return () => window.removeEventListener('auth:clear', handleAuthClear);
@@ -50,8 +47,18 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    // NEW: call this after any profile mutation to re-sync user state
+    const refreshUser = async () => {
+        try {
+            const userData = await getCurrentUser();
+            setUser(userData?.data || userData);
+        } catch (e) {
+            console.error("Failed to refresh user", e);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, loginUser, registerUser, logoutUser, setUser }}>
+        <AuthContext.Provider value={{ user, loading, loginUser, registerUser, logoutUser, setUser, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

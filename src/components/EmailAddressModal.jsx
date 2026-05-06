@@ -1,42 +1,54 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from './Toast';
 
 function EmailAddressModal({ isOpen, onClose, currentEmail = '' }) {
+  const { refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [email, setEmail] = useState(currentEmail);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Re-populate when modal opens with latest user data
+  useEffect(() => {
+    if (isOpen) {
+      setEmail(currentEmail);
+      setError('');
+    }
+  }, [isOpen, currentEmail]);
 
   if (!isOpen) return null;
 
   const validateEmail = (email) => {
-    if (!email.trim()) {
-      return 'Email address cannot be empty';
-    }
-    // Basic email validation
+    if (!email.trim()) return 'Email address cannot be empty';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      return 'Please enter a valid email address';
-    }
+    if (!emailRegex.test(email.trim())) return 'Please enter a valid email address';
     return '';
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationError = validateEmail(email);
-    
     if (validationError) {
       setError(validationError);
       return;
     }
-
     setError('');
-    // Placeholder for update function
-    handleUpdateEmail(email.trim());
-  };
-
-  const handleUpdateEmail = (email) => {
-    // TODO: Implement API call to update email address
-    console.log('Updating email address to:', email);
-    // After successful update, close modal
-    onClose();
+    setLoading(true);
+    try {
+      await apiFetch('/users/update', {
+        method: 'PUT',
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      await refreshUser();
+      showToast('Email address updated successfully.');
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to update email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -87,9 +99,10 @@ function EmailAddressModal({ isOpen, onClose, currentEmail = '' }) {
 
             <button 
               type="submit"
-              className="w-full bg-[#FF7D01] hover:bg-orange-600 text-white font-medium py-3.5 rounded-full transition-colors"
+              disabled={loading}
+              className="w-full bg-[#FF7D01] hover:bg-orange-600 text-white font-medium py-3.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Update
+              {loading ? 'Updating...' : 'Update'}
             </button>
           </form>
         </div>
@@ -99,10 +112,3 @@ function EmailAddressModal({ isOpen, onClose, currentEmail = '' }) {
 }
 
 export default EmailAddressModal
-
-
-
-
-
-
-

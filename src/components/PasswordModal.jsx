@@ -1,13 +1,36 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from './Toast';
 
 function PasswordModal({ activeModal, onClose }) {
+  const { logoutUser } = useAuth();
+  const { showToast } = useToast();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordValue, setPasswordValue] = useState('');
+  const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
+  const [currentPasswordValue, setCurrentPasswordValue] = useState('');
   const [selectedReason, setSelectedReason] = useState('');
   const [otherReasonText, setOtherReasonText] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!activeModal) {
+      setStep(1);
+      setPasswordValue('');
+      setConfirmPasswordValue('');
+      setCurrentPasswordValue('');
+      setShowPassword(false);
+      setShowConfirmPassword(false);
+      setApiError('');
+      setLoading(false);
+    }
+  }, [activeModal]);
 
   if (!activeModal) return null;
 
@@ -24,14 +47,52 @@ function PasswordModal({ activeModal, onClose }) {
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const hasNumberOrSpecial = /[0-9!@#$%^&*(),.?":{}|<>]/.test(password);
-    
-    if (hasMinLength && hasUppercase && hasLowercase && hasNumberOrSpecial) {
-      return 'Strong';
-    }
+    if (hasMinLength && hasUppercase && hasLowercase && hasNumberOrSpecial) return 'Strong';
     return null;
   };
 
   const passwordStrength = getPasswordStrength(passwordValue);
+
+  // Step 1 just collects the current password — real validation happens on final submit
+  const handleVerifyCurrentPassword = () => {
+    if (!currentPasswordValue) return;
+    setApiError('');
+    setStep(2);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPasswordValue) {
+      setApiError('Please enter your current password.');
+      return;
+    }
+    if (!passwordStrength) {
+      setApiError('New password does not meet the requirements.');
+      return;
+    }
+    if (passwordValue !== confirmPasswordValue) {
+      setApiError('Passwords do not match.');
+      return;
+    }
+    setApiError('');
+    setLoading(true);
+    try {
+      await apiFetch('/users/change-password', {
+        method: 'PUT',
+        body: JSON.stringify({
+          current_password: currentPasswordValue,
+          new_password: passwordValue,
+        }),
+      });
+      // Sessions invalidated server-side — log user out
+      showToast('Password updated successfully. Please log in again.');
+      await logoutUser();
+      onClose();
+    } catch (err) {
+      setApiError(err.message || 'Failed to update password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderContent = () => {
     switch (activeModal) {
@@ -41,22 +102,32 @@ function PasswordModal({ activeModal, onClose }) {
             <>
               <h2 className="text-xl font-medium text-gray-900 mb-3">Update Your Password</h2>
               <p className="text-xs font-normal text-gray-600 mb-8 leading-relaxed pr-5">
-                Enter your registered email address to receive a password reset link. Once verified, choose a strong new password to continue enjoying seamless access to your Smash Apartments profile.
+                Enter your current password, then choose a strong new password to secure your Smash Apartments profile.
               </p>
+
+              {apiError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                  {apiError}
+                </div>
+              )}
               
-              <div className="mb-6">
+              {/* Current Password */}
+              <div className="mb-4">
                 <input
-                  type="email"
-                  placeholder="Enter Your Email Address"
+                  type="password"
+                  placeholder="Enter Your Current Password"
+                  value={currentPasswordValue}
+                  onChange={(e) => { setCurrentPasswordValue(e.target.value); setApiError(''); }}
                   className="w-full px-4 py-3.5 border border-gray-200 rounded-full text-sm placeholder:text-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                 />
               </div>
 
               <button
-                onClick={() => setStep(2)}
-                className="w-full bg-[#FF7D01] hover:bg-orange-600 text-white font-medium py-3.5 rounded-full transition-colors"
+                onClick={handleVerifyCurrentPassword}
+                disabled={!currentPasswordValue}
+                className="w-full bg-[#FF7D01] hover:bg-orange-600 text-white font-medium py-3.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Send Password Reset Link
+                Continue
               </button>
             </>
           );
@@ -67,6 +138,12 @@ function PasswordModal({ activeModal, onClose }) {
               <p className="text-sm text-gray-600 mb-8 leading-relaxed">
                 Create a strong new password to secure your account.
               </p>
+
+              {apiError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                  {apiError}
+                </div>
+              )}
               
               <div className="space-y-5 mb-6">
                 <div className="relative">
@@ -74,7 +151,7 @@ function PasswordModal({ activeModal, onClose }) {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter a Password"
                     value={passwordValue}
-                    onChange={(e) => setPasswordValue(e.target.value)}
+                    onChange={(e) => { setPasswordValue(e.target.value); setApiError(''); }}
                     className="w-full px-4 py-3.5 border border-gray-200 rounded-full text-sm placeholder:text-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 pr-12"
                   />
                   <button
@@ -132,6 +209,8 @@ function PasswordModal({ activeModal, onClose }) {
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm Password"
+                    value={confirmPasswordValue}
+                    onChange={(e) => { setConfirmPasswordValue(e.target.value); setApiError(''); }}
                     className="w-full px-4 py-3.5 border border-gray-200 rounded-full text-sm placeholder:text-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 pr-12"
                   />
                   <button
@@ -155,9 +234,22 @@ function PasswordModal({ activeModal, onClose }) {
                 </div>
               </div>
 
-              <button className="w-full bg-[#FF7D01] hover:bg-orange-400 text-white font-medium py-3.5 rounded-full transition-colors">
-                Update
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setStep(1); setApiError(''); }}
+                  className="flex-1 border border-gray-300 hover:border-gray-400 text-gray-700 font-medium py-3.5 rounded-full transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={loading || !passwordStrength || passwordValue !== confirmPasswordValue}
+                  className="flex-1 bg-[#FF7D01] hover:bg-orange-400 text-white font-medium py-3.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Updating...' : 'Update'}
+                </button>
+              </div>
             </>
           );
         }
@@ -165,219 +257,183 @@ function PasswordModal({ activeModal, onClose }) {
 
       case 'deactivate':
         return (
-        <>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Reason For Account Deactivation</h2>
-          
-          <div className="mb-6 flex items-start gap-2.5">
-            <svg className="w-5 h-5 text-[#FF7D01] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
-            <p className="text-xs text-[#333333] font-light leading-6">
-              Once your account is deactivated, it will remain in a suspended state for a <strong className="font-semibold text-gray-900">period of 25 days</strong>. During this time, you may request a restoration of your account. After the 25-day grace period, your account and all associated data will be permanently deleted and cannot be recovered.
+          <>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Deactivate Account</h2>
+            
+            <div className="mb-6 flex items-start gap-2.5">
+              <svg className="w-5 h-5 text-[#FF7D01] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <p className="text-xs text-[#333333] font-light leading-6">
+                Deactivating your account will temporarily disable it. Your profile, bookings, and data will be preserved and you can reactivate at any time by logging back in.
+              </p>
+            </div>
+
+            <p className="text-base font-medium text-gray-900 mb-4">
+              Select a reason why you want to deactivate your account.
             </p>
-          </div>
 
-          <p className="text-base font-medium text-gray-900 mb-4">
-            Select a reason why you want to deactivate your account.
-          </p>
+            <div className="space-y-3.5 mb-6">
+              {[
+                { value: 'taking-break', label: 'Taking a break from the platform' },
+                { value: 'privacy-concerns', label: 'Privacy concerns' },
+                { value: 'not-useful', label: 'Not finding it useful' },
+                { value: 'other', label: 'Other (Please Specify)' },
+              ].map(({ value, label }) => (
+                <div key={value}>
+                  <label className="flex items-center justify-between cursor-pointer group border-b py-3">
+                    <span className="text-md font-extralight text-gray-700">{label}</span>
+                    <div className="relative flex items-center">
+                      <input
+                        type="radio"
+                        name="deactivate-reason"
+                        value={value}
+                        checked={selectedReason === value}
+                        onChange={(e) => handleReasonChange(e.target.value)}
+                        className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
+                      />
+                    </div>
+                  </label>
+                  {value === 'other' && selectedReason === 'other' && (
+                    <textarea
+                      placeholder="Enter Reason"
+                      value={otherReasonText}
+                      onChange={(e) => setOtherReasonText(e.target.value)}
+                      rows="4"
+                      className="w-full mt-3 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#FF7D01] focus:ring-1 focus:ring-[#FF7D01] resize-none"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
 
-          <div className="space-y-3.5 mb-6">
-            <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-              <span className="text-md font-extralight text-gray-700">I no longer use Smash Apartments</span>
-              <div className="relative flex items-center">
-                <input
-                  type="radio"
-                  name="deactivate-reason"
-                  value="no-longer-use"
-                  checked={selectedReason === 'no-longer-use'}
-                  onChange={(e) => handleReasonChange(e.target.value)}
-                  className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[1px]"
-                />
-              </div>
+            <label className="flex items-start gap-2.5 mb-6 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="w-4 h-4 text-[#FF7D01] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#FF7D01] cursor-pointer mt-0.5 flex-shrink-0 checked:border-[#FF7D01] checked:border-[5px]"
+              />
+              <span className="text-xs font-light text-gray-600 leading-relaxed">
+                By clicking "Deactivate Account", I agree that my account can only be restored within <strong className="font-semibold text-gray-900">25 days</strong> of deactivation. After this period, it will be permanently deleted and cannot be recovered.
+              </span>
             </label>
 
-            <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-              <span className="text-md font-extralight text-gray-700">I'm not satisfied with the platform or service</span>
-              <div className="relative flex items-center">
-                <input
-                  type="radio"
-                  name="deactivate-reason"
-                  value="not-satisfied"
-                  checked={selectedReason === 'not-satisfied'}
-                  onChange={(e) => handleReasonChange(e.target.value)}
-                  className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
-                />
-              </div>
-            </label>
+            <button className="w-full bg-[#FF7D01] hover:bg-[#E87000] text-white font-medium py-3.5 rounded-full transition-colors duration-200">
+              Deactivate Account
+            </button>
+          </>
+        );
 
-            <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-              <span className="text-md font-extralight text-gray-700">I have privacy or security concerns</span>
-              <div className="relative flex items-center">
-                <input
-                  type="radio"
-                  name="deactivate-reason"
-                  value="privacy-concerns"
-                  checked={selectedReason === 'privacy-concerns'}
-                  onChange={(e) => handleReasonChange(e.target.value)}
-                  className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
-                />
-              </div>
-            </label>
+      case 'delete':
+        return (
+          <>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Reason For Deleting Account</h2>
+            
+            <div className="mb-6 flex items-start gap-2.5">
+              <svg className="w-5 h-5 text-[#FF7D01] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <p className="text-xs text-[#333333] font-light leading-6">
+                Deleting your account is permanent. All data, preferences, and activity history associated with your profile will be irreversibly removed and cannot be restored.
+              </p>
+            </div>
 
-            <div>
+            <p className="text-base font-medium text-gray-900 mb-4">
+              Select a reason why you want to delete your account.
+            </p>
+
+            <div className="space-y-3.5 mb-6">
               <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-                <span className="text-md font-extralight text-gray-700">Other (Please Specify)</span>
+                <span className="text-md font-extralight text-gray-700">No longer interested in using the platform</span>
                 <div className="relative flex items-center">
                   <input
                     type="radio"
-                    name="deactivate-reason"
-                    value="other"
-                    checked={selectedReason === 'other'}
+                    name="delete-reason"
+                    value="no-longer-interested"
+                    checked={selectedReason === 'no-longer-interested'}
                     onChange={(e) => handleReasonChange(e.target.value)}
                     className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
                   />
                 </div>
               </label>
 
-              {selectedReason === 'other' && (
-                <textarea
-                  placeholder="Enter Reason"
-                  value={otherReasonText}
-                  onChange={(e) => setOtherReasonText(e.target.value)}
-                  rows="4"
-                  className="w-full mt-3 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#FF7D01] focus:ring-1 focus:ring-[#FF7D01] resize-none"
-                />
-              )}
+              <label className="flex items-center justify-between cursor-pointer group border-b py-3">
+                <span className="text-md font-extralight text-gray-700">Unsatisfactory user experience</span>
+                <div className="relative flex items-center">
+                  <input
+                    type="radio"
+                    name="delete-reason"
+                    value="unsatisfactory"
+                    checked={selectedReason === 'unsatisfactory'}
+                    onChange={(e) => handleReasonChange(e.target.value)}
+                    className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
+                  />
+                </div>
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer group border-b py-3">
+                <span className="text-md font-extralight text-gray-700">Security concerns or suspicious activity</span>
+                <div className="relative flex items-center">
+                  <input
+                    type="radio"
+                    name="delete-reason"
+                    value="security-concerns"
+                    checked={selectedReason === 'security-concerns'}
+                    onChange={(e) => handleReasonChange(e.target.value)}
+                    className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
+                  />
+                </div>
+              </label>
+
+              <div>
+                <label className="flex items-center justify-between cursor-pointer group border-b py-3">
+                  <span className="text-md font-extralight text-gray-700">Other (Please Specify)</span>
+                  <div className="relative flex items-center">
+                    <input
+                      type="radio"
+                      name="delete-reason"
+                      value="other"
+                      checked={selectedReason === 'other'}
+                      onChange={(e) => handleReasonChange(e.target.value)}
+                      className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
+                    />
+                  </div>
+                </label>
+
+                {selectedReason === 'other' && (
+                  <textarea
+                    placeholder="Enter Reason"
+                    value={otherReasonText}
+                    onChange={(e) => setOtherReasonText(e.target.value)}
+                    rows="4"
+                    className="w-full mt-3 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#FF7D01] focus:ring-1 focus:ring-[#FF7D01] resize-none"
+                  />
+                )}
+              </div>
             </div>
-          </div>
 
-          <label className="flex items-start gap-2.5 mb-6 cursor-pointer group">
-            <input
-              type="checkbox"
-              checked={agreedToTerms}
-              onChange={(e) => setAgreedToTerms(e.target.checked)}
-              className="w-4 h-4 text-[#FF7D01] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#FF7D01] cursor-pointer mt-0.5 flex-shrink-0 checked:border-[#FF7D01] checked:border-[5px]"
-            />
-            <span className="text-xs font-light text-gray-600 leading-relaxed">
-              By clicking "Deactivate Account", I agree that my account can only be restored within <strong className="font-semibold text-gray-900">25 days</strong> of deactivation. After this period, it will be permanently deleted and cannot be recovered.
-            </span>
-          </label>
-
-          <button className="w-full bg-[#FF7D01] hover:bg-[#E87000] text-white font-medium py-3.5 rounded-full transition-colors duration-200">
-            Deactivate Account
-          </button>
-        </>
-      );
-
-      case 'delete':
-  return (
-    <>
-      <h2 className="text-2xl font-semibold text-gray-900 mb-4">Reason For Deleting Account</h2>
-      
-      <div className="mb-6 flex items-start gap-2.5">
-        <svg className="w-5 h-5 text-[#FF7D01] mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <p className="text-xs text-[#333333] font-light leading-6">
-          Deleting your account is permanent. All data, preferences, and activity history associated with your profile will be irreversibly removed and cannot be restored.
-        </p>
-      </div>
-
-      <p className="text-base font-medium text-gray-900 mb-4">
-        Select a reason why you want to delete your account.
-      </p>
-
-      <div className="space-y-3.5 mb-6">
-        <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-          <span className="text-md font-extralight text-gray-700">No longer interested in using the platform</span>
-          <div className="relative flex items-center">
-            <input
-              type="radio"
-              name="delete-reason"
-              value="no-longer-interested"
-              checked={selectedReason === 'no-longer-interested'}
-              onChange={(e) => handleReasonChange(e.target.value)}
-              className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
-            />
-          </div>
-        </label>
-
-        <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-          <span className="text-md font-extralight text-gray-700">Unsatisfactory user experience</span>
-          <div className="relative flex items-center">
-            <input
-              type="radio"
-              name="delete-reason"
-              value="unsatisfactory"
-              checked={selectedReason === 'unsatisfactory'}
-              onChange={(e) => handleReasonChange(e.target.value)}
-              className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
-            />
-          </div>
-        </label>
-
-        <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-          <span className="text-md font-extralight text-gray-700">Security concerns or suspicious activity</span>
-          <div className="relative flex items-center">
-            <input
-              type="radio"
-              name="delete-reason"
-              value="security-concerns"
-              checked={selectedReason === 'security-concerns'}
-              onChange={(e) => handleReasonChange(e.target.value)}
-              className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
-            />
-          </div>
-        </label>
-
-        <div>
-          <label className="flex items-center justify-between cursor-pointer group border-b py-3">
-            <span className="text-md font-extralight text-gray-700">Other (Please Specify)</span>
-            <div className="relative flex items-center">
+            <label className="flex items-start gap-2.5 mb-6 cursor-pointer group">
               <input
-                type="radio"
-                name="delete-reason"
-                value="other"
-                checked={selectedReason === 'other'}
-                onChange={(e) => handleReasonChange(e.target.value)}
-                className="w-5 h-5 border-2 border-[#FF7D01]/20 text-[#FF7D01] focus:ring-2 focus:ring-[#FF7D01] focus:ring-offset-0 cursor-pointer appearance-none rounded-full checked:border-[#FF7D01] checked:border-[5px]"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="w-4 h-4 text-[#FF7D01] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#FF7D01] cursor-pointer mt-0.5 flex-shrink-0 checked:border-[#FF7D01] checked:border-[5px]"
               />
-            </div>
-          </label>
+              <span className="text-xs font-light text-gray-600 leading-relaxed">
+                By clicking "Delete Account", I agree that all associated data will be permanently deleted without the option for recovery.
+              </span>
+            </label>
 
-          {selectedReason === 'other' && (
-            <textarea
-              placeholder="Enter Reason"
-              value={otherReasonText}
-              onChange={(e) => setOtherReasonText(e.target.value)}
-              rows="4"
-              className="w-full mt-3 px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:border-[#FF7D01] focus:ring-1 focus:ring-[#FF7D01] resize-none"
-            />
-          )}
-        </div>
-      </div>
-
-      <label className="flex items-start gap-2.5 mb-6 cursor-pointer group">
-        <input
-          type="checkbox"
-          checked={agreedToTerms}
-          onChange={(e) => setAgreedToTerms(e.target.checked)}
-          className="w-4 h-4 text-[#FF7D01] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#FF7D01] cursor-pointer mt-0.5 flex-shrink-0 checked:border-[#FF7D01] checked:border-[5px]"
-        />
-        <span className="text-xs font-light text-gray-600 leading-relaxed">
-          By clicking "Delete Account", I agree that all associated data will be permanently deleted without the option for recovery.
-        </span>
-      </label>
-
-      <button className="w-full bg-[#FF7D01] hover:bg-[#E87000] text-white font-medium py-3.5 rounded-full transition-colors duration-200">
-        Delete Account
-      </button>
-    </>
-  );
+            <button className="w-full bg-[#FF7D01] hover:bg-[#E87000] text-white font-medium py-3.5 rounded-full transition-colors duration-200">
+              Delete Account
+            </button>
+          </>
+        );
 
       default:
         return null;

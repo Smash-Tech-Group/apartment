@@ -1,51 +1,56 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from './Toast';
 
 function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
-  const [step, setStep] = useState(1); // 1: Phone input, 2: OTP verification
+  const { refreshUser } = useAuth();
+  const { showToast } = useToast();
+  const [step, setStep] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState(currentPhoneNumber);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [otpError, setOtpError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Re-populate when modal opens with latest user data
+  useEffect(() => {
+    if (isOpen) {
+      setPhoneNumber(currentPhoneNumber);
+      setStep(1);
+      setOtp(['', '', '', '', '', '']);
+      setError('');
+      setOtpError('');
+    }
+  }, [isOpen, currentPhoneNumber]);
 
   if (!isOpen) return null;
 
   const validatePhoneNumber = (phone) => {
-    if (!phone.trim()) {
-      return 'Phone number cannot be empty';
-    }
-    // Basic phone validation - accepts numbers, spaces, dashes, parentheses, and +
+    if (!phone.trim()) return 'Phone number cannot be empty';
     const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
-    if (!phoneRegex.test(phone.trim())) {
-      return 'Please enter a valid phone number';
-    }
+    if (!phoneRegex.test(phone.trim())) return 'Please enter a valid phone number';
     return '';
   };
 
   const handlePhoneSubmit = (e) => {
     e.preventDefault();
     const validationError = validatePhoneNumber(phoneNumber);
-    
     if (validationError) {
       setError(validationError);
       return;
     }
-
     setError('');
-    // Simulate sending OTP - in real implementation, this would call an API
-    // For now, just move to OTP step
+    // Move to OTP step (OTP send API to be wired when endpoint is ready)
     setStep(2);
   };
 
   const handleOtpChange = (index, value) => {
-    // Only allow digits
     if (value && !/^\d$/.test(value)) return;
-
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setOtpError('');
-
-    // Auto-focus next input
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       if (nextInput) nextInput.focus();
@@ -53,7 +58,6 @@ function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
   };
 
   const handleOtpKeyDown = (index, e) => {
-    // Handle backspace to go to previous input
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       const prevInput = document.getElementById(`otp-${index - 1}`);
       if (prevInput) prevInput.focus();
@@ -67,39 +71,41 @@ function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
       const newOtp = pastedData.split('').slice(0, 6);
       setOtp(newOtp);
       setOtpError('');
-      // Focus last input
       const lastInput = document.getElementById('otp-5');
       if (lastInput) lastInput.focus();
     }
   };
 
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     const otpValue = otp.join('');
-    
     if (otpValue.length !== 6) {
       setOtpError('Please enter the complete 6-digit OTP');
       return;
     }
-
     setOtpError('');
-    // Placeholder for OTP verification function
-    handleVerifyOTP(otpValue);
-  };
-
-  const handleVerifyOTP = (otpValue) => {
-    // TODO: Implement API call to verify OTP
-    console.log('Verifying OTP:', otpValue);
-    console.log('Updating phone number to:', phoneNumber);
-    // After successful verification, update phone number and close modal
-    // handleUpdatePhone(phoneNumber.trim());
-    onClose();
+    setLoading(true);
+    try {
+      // TODO: verify OTP with /auth/verify-otp when endpoint is ready
+      // For now, call update directly after OTP step
+      await apiFetch('/users/update', {
+        method: 'PUT',
+        body: JSON.stringify({ phone_number: phoneNumber.trim() }),
+      });
+      await refreshUser();
+      showToast('Phone number updated successfully.');
+      onClose();
+    } catch (err) {
+      setOtpError(err.message || 'Failed to update phone number. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResendOtp = () => {
     setOtp(['', '', '', '', '', '']);
     setOtpError('');
-    // TODO: Implement API call to resend OTP
+    // TODO: call resend OTP API when endpoint is ready
     console.log('Resending OTP to:', phoneNumber);
   };
 
@@ -107,13 +113,6 @@ function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
     setStep(1);
     setOtp(['', '', '', '', '', '']);
     setOtpError('');
-  };
-
-  const handleUpdatePhone = (phone) => {
-    // TODO: Implement API call to update phone number
-    console.log('Updating phone number to:', phone);
-    // After successful update, close modal
-    onClose();
   };
 
   const handleClose = () => {
@@ -143,7 +142,7 @@ function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
             <>
               <h2 className="text-2xl font-semibold text-gray-900 mb-3">Update Your Phone Number</h2>
               <p className="text-sm text-gray-600 mb-8 leading-relaxed">
-                This number may be used for booking confirmations, property contact, and account recovery. Please make sure it’s active and accessible as a verification code would be sent to confirm the change.
+                This number may be used for booking confirmations, property contact, and account recovery. Please make sure it's active and accessible as a verification code would be sent to confirm the change.
               </p>
               
               <form onSubmit={handlePhoneSubmit}>
@@ -208,9 +207,10 @@ function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
                 <div className="space-y-3">
                   <button 
                     type="submit"
-                    className="w-full bg-[#FF7D01] hover:bg-orange-600 text-white font-medium py-3.5 rounded-full transition-colors"
+                    disabled={loading}
+                    className="w-full bg-[#FF7D01] hover:bg-orange-600 text-white font-medium py-3.5 rounded-full transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Verify
+                    {loading ? 'Verifying...' : 'Verify'}
                   </button>
                   
                   <div className="flex gap-4">
@@ -240,10 +240,3 @@ function PhoneNumberModal({ isOpen, onClose, currentPhoneNumber = '' }) {
 }
 
 export default PhoneNumberModal
-
-
-
-
-
-
-
