@@ -103,3 +103,9 @@ export const apiFetch = async (url, options = {}) => {
 
     return handleResponse(response);
 };
+
+export const getMediaUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return BASE_URL.replace('/api/v1', '') + path;
+};
