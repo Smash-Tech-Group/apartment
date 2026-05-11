@@ -11,13 +11,13 @@ import Wardrobe from "../../assets/feature/wardrobe.svg";
 import Parker from "../../assets/feature/parker.svg";
 import Fan from "../../assets/feature/fan.svg";
 
-const ALL_FEATURES = [
-  { key: "ac", label: "Air Conditioning", icon: <img src={Airconditioner} alt="AC" className="w-6 h-6" /> },
-  { key: "wifi", label: "Wi‑Fi", icon: <img src={Wifi} alt="Wi‑Fi" className="w-6 h-6" /> },
-  { key: "infotainment", label: "Infotainment", icon: <img src={Tv} alt="Infotainment" className="w-6 h-6" /> },
-  { key: "extra_storage", label: "Extra Storage", icon: <img src={Wardrobe} alt="Storage" className="w-6 h-6" /> },
-  { key: "free_parking", label: "Free Parking", icon: <img src={Parker} alt="Free Parking" className="w-6 h-6" /> },
-  { key: "fan", label: "Cabin Fan", icon: <img src={Fan} alt="Fan" className="w-6 h-6" /> },
+export const ALL_FEATURES = [
+  { key: "ac", label: "Air Conditioning", category: "comfort", icon: <img src={Airconditioner} alt="AC" className="w-6 h-6" /> },
+  { key: "wifi", label: "Wi‑Fi", category: "connectivity", icon: <img src={Wifi} alt="Wi‑Fi" className="w-6 h-6" /> },
+  { key: "infotainment", label: "Infotainment", category: "connectivity", icon: <img src={Tv} alt="Infotainment" className="w-6 h-6" /> },
+  { key: "extra_storage", label: "Extra Storage", category: "utility", icon: <img src={Wardrobe} alt="Storage" className="w-6 h-6" /> },
+  { key: "free_parking", label: "Free Parking", category: "utility", icon: <img src={Parker} alt="Free Parking" className="w-6 h-6" /> },
+  { key: "fan", label: "Cabin Fan", category: "comfort", icon: <img src={Fan} alt="Fan" className="w-6 h-6" /> },
 ];
 
 export default function FeaturesRide() {

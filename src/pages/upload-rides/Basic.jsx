@@ -14,6 +14,8 @@ export default function BasicRide() {
   function next() {
     const e = {};
     if (!state.basicInfo.type) e.type = "Required";
+    if (!state.basicInfo.seats) e.seats = "Required";
+    if (!state.basicInfo.doors) e.doors = "Required";
     setErrors(e);
     if (Object.keys(e).length === 0) navigate("/upload-rides/location");
   }
@@ -51,14 +53,18 @@ export default function BasicRide() {
           <div className="space-y-4">
             <div className="grid gap-4">
               <div>
-                <Select value={state.basicInfo.seats} onChange={(e)=>dispatch({type:"SET_BASIC", payload:{ seats: Number(e.target.value) }})}>
+                <Select invalid={!!errors.seats} value={state.basicInfo.seats || ""} onChange={(e)=>dispatch({type:"SET_BASIC", payload:{ seats: Number(e.target.value) }})}>
+                  <option value="" disabled>Select Seats</option>
                   {Array.from({length:8}).map((_,i)=> <option key={i+1} value={i+1}>{i+1} Seat{i+1>1?'s':''}</option>)}
                 </Select>
+                {errors.seats && <p className="text-red-500 text-xs mt-1">{errors.seats}</p>}
               </div>
               <div>
-                <Select value={state.basicInfo.doors} onChange={(e)=>dispatch({type:"SET_BASIC", payload:{ doors: Number(e.target.value) }})}>
+                <Select invalid={!!errors.doors} value={state.basicInfo.doors || ""} onChange={(e)=>dispatch({type:"SET_BASIC", payload:{ doors: Number(e.target.value) }})}>
+                  <option value="" disabled>Select Doors</option>
                   {[2,3,4,5].map((d)=> <option key={d} value={d}>{d} Door{d>1?'s':''}</option>)}
                 </Select>
+                {errors.doors && <p className="text-red-500 text-xs mt-1">{errors.doors}</p>}
               </div>
             </div>
           </div>

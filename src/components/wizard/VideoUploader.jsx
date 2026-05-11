@@ -27,7 +27,7 @@ function fileToObj(file, duration) {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () =>
-      resolve({ id: crypto.randomUUID(), url: reader.result, filename: file.name, size: file.size, duration });
+      resolve({ id: crypto.randomUUID(), url: reader.result, filename: file.name, size: file.size, duration, file });
     reader.readAsDataURL(file);
   });
 }

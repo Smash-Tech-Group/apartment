@@ -7,7 +7,15 @@ export default function ReviewRide() {
   const { state, dispatch } = useWizard();
   const navigate = useNavigate();
 
-  function goNext() { navigate("/upload-rides/complete"); }
+  const [errors, setErrors] = React.useState({});
+
+  function goNext() { 
+    if (!state.price || state.price <= 0) {
+      setErrors({ price: "Price must be greater than 0" });
+      return;
+    }
+    navigate("/upload-rides/complete"); 
+  }
 
   return (
     <WizardLayout
@@ -29,6 +37,7 @@ export default function ReviewRide() {
               className="w-full rounded-full outline-none px-2 py-1 bg-transparent"
             />
           </div>
+          {errors.price && <p className="text-red-500 text-xs mb-4">{errors.price}</p>}
           <div className="divide-y divide-gray-100">
             <div className="flex items-center justify-between py-3">
               <span className="text-sm text-gray-600">VAT <span title="VAT in NG is 10%" className="ml-1">ⓘ</span></span>

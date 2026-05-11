@@ -8,7 +8,7 @@ const MAX_SIZE = 5 * 1024 * 1024;
 function fileToObj(file) {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = () => resolve({ id: crypto.randomUUID(), url: reader.result, filename: file.name, size: file.size });
+    reader.onload = () => resolve({ id: crypto.randomUUID(), url: reader.result, filename: file.name, size: file.size, file });
     reader.readAsDataURL(file);
   });
 }

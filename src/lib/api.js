@@ -49,6 +49,10 @@ export const apiFetch = async (url, options = {}) => {
         'Content-Type': 'application/json',
     };
 
+    if (options.body instanceof FormData) {
+        delete defaultHeaders['Content-Type'];
+    }
+
     const token = getAccessToken();
     if (token) {
         defaultHeaders['Authorization'] = `Bearer ${token}`;

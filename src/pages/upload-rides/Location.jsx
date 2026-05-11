@@ -12,8 +12,32 @@ export default function LocationRide() {
   function next() {
     const e = {};
     if (!state.basicInfo.location) e.location = "Required";
+    const totalPassengers = (state.basicInfo.guests?.adults || 0) + (state.basicInfo.guests?.children || 0) + (state.basicInfo.guests?.infants || 0);
+    const seatCount = state.basicInfo.seats || 1;
+    if (totalPassengers > seatCount) e.guests = `Total passengers cannot exceed seat count (${seatCount})`;
     setErrors(e);
     if (Object.keys(e).length === 0) navigate("/upload-rides/photos");
+  }
+
+  function handleUseCurrentLocation() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          dispatch({
+            type: "SET_BASIC",
+            payload: {
+              latitude,
+              longitude,
+              location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+            }
+          });
+        },
+        (error) => {
+          console.error("Geolocation error", error);
+        }
+      );
+    }
   }
 
   function inc(key, delta) {
@@ -56,6 +80,7 @@ export default function LocationRide() {
       />
       <button 
         type="button" 
+        onClick={handleUseCurrentLocation}
         className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 rounded-full px-3 py-2 sm:px-5 sm:py-3 bg-gray-900 text-white text-[10px] sm:text-xs font-medium hover:bg-gray-800 transition-colors whitespace-nowrap"
       >
         Use Current Location
@@ -64,6 +89,7 @@ export default function LocationRide() {
 
     <div className="border-t border-gray-100 pt-6">
       <p className="text-sm font-semibold text-gray-800 mb-4">Select Number of Passengers</p>
+      {errors.guests && <p className="text-red-500 text-xs mb-2">{errors.guests}</p>}
       <div className="grid grid-cols-3 gap-1 max-[640px]:grid-cols-1">
         {[
           { key: "adults", label: "Adult", hint: "12+ Years" },
