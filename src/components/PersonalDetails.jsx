@@ -9,10 +9,27 @@ import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import FullNameModal from './FullNameModal';
 import PhoneNumberModal from './PhoneNumberModal';
 import EmailAddressModal from './EmailAddressModal';
+import AddressModal from './AddressModal';
+
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
 import { apiFetch, BASE_URL } from '../lib/api';
-import { getAccessToken } from '../lib/auth';
+import { getAccessToken, getValidAccessToken } from '../lib/auth';
+
+const getAvatarColor = (name) => {
+  const colors = [
+    'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
+    'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
+    'bg-orange-500', 'bg-emerald-500'
+  ];
+  if (!name) return 'bg-gray-400';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
 
 export default function PersonalDetails() {
   const { user, logoutUser, refreshUser } = useAuth();
@@ -28,6 +45,8 @@ export default function PersonalDetails() {
   const [showFullNameModal, setShowFullNameModal] = useState(false);
   const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false);
   const [showEmailAddressModal, setShowEmailAddressModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const [avatarPreview, setAvatarPreview] = useState(null); // instant local preview
@@ -73,7 +92,8 @@ export default function PersonalDetails() {
       // Use raw fetch — apiFetch always injects Content-Type: application/json which
       // breaks multipart uploads. Raw fetch lets the browser set the correct
       // multipart/form-data boundary automatically.
-      const token = getAccessToken();
+      // Ensure we have a valid token (refreshes if lost after page reload)
+      const token = await getValidAccessToken();
       const response = await fetch(`${BASE_URL}/users/upload-avatar`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -139,15 +159,16 @@ export default function PersonalDetails() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1">
                         {/* Avatar preview */}
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-[#FF7D011A] flex-shrink-0 flex items-center justify-center">
+                        <div className={`w-12 h-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl ? 'bg-transparent' : getAvatarColor(user?.first_name)}`}>
                           {avatarUrl ? (
                             <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-[#FF7D01] text-sm font-semibold">
-                              {user?.first_name?.[0] || user?.email?.[0] || '?'}
+                            <span className="text-white text-lg font-bold">
+                              {user?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
                             </span>
                           )}
                         </div>
+
                         <span className={avatarUrl ? "text-gray-700 break-words" : "text-gray-400 break-words"}>
                           {avatarLoading ? 'Uploading...' : avatarUrl ? 'Profile photo uploaded' : 'Add a profile photo'}
                         </span>
@@ -177,15 +198,16 @@ export default function PersonalDetails() {
                     </button>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-[#FF7D011A] flex-shrink-0 flex items-center justify-center">
+                    <div className={`w-12 h-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center ${avatarUrl ? 'bg-transparent' : getAvatarColor(user?.first_name)}`}>
                       {avatarUrl ? (
                         <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-[#FF7D01] text-sm font-semibold">
-                          {user?.first_name?.[0] || user?.email?.[0] || '?'}
+                        <span className="text-white text-lg font-bold">
+                          {user?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
                         </span>
                       )}
                     </div>
+
                     <span className={`text-sm ${avatarUrl ? "text-gray-700" : "text-gray-400"}`}>
                       {avatarLoading ? 'Uploading...' : avatarUrl ? 'Profile photo uploaded' : 'Add a profile photo'}
                     </span>
@@ -225,22 +247,25 @@ export default function PersonalDetails() {
               {/* Id Verification */}
               <DetailRow
                 label="Identity Verification"
-                link="/id-verify"
-                value="Add a Means of Identification"
-                action="Add"
-                placeholder={true}
+                link={user?.id_verification_url ? null : "/id-verify"}
+                value={user?.id_verification_url ? "Document Uploaded" : "Add a Means of Identification"}
+                action={user?.id_verification_url ? "Update" : "Add"}
+                placeholder={!user?.id_verification_url}
+                verified={!!user?.id_verification_url}
                 description="This will be used by properties or attractions you book to verify your identity when necessary."
+                onClick={user?.id_verification_url ? () => navigate('/id-verify') : null}
               />
 
               {/* Address */}
               <DetailRow
                 label="Address"
-                link="/"
-                value="Add Your Address"
-                action="Add"
-                placeholder={true}
+                value={user?.address || "Add Your Address"}
+                action={user?.address ? "Update" : "Add"}
+                placeholder={!user?.address}
                 description="Providing your address allows properties or attractions to verify your location, ensuring a seamless booking and reservation process."
+                onClick={() => setShowAddressModal(true)}
               />
+
             </div>
           </div>
 
@@ -287,7 +312,13 @@ export default function PersonalDetails() {
         onClose={() => setShowEmailAddressModal(false)}
         currentEmail={currentEmail}
       />
+      <AddressModal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        currentAddress={user?.address}
+      />
     </div>
+
   );
 }
 

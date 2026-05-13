@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import CreditCard from '../assets/icons/9.svg';
 import Shield from '../assets/icons/12.svg';
@@ -9,8 +9,14 @@ import Lock from '../assets/icons/2.svg';
 import Bunk from "../assets/icons/19.svg";
 import Desk from "../assets/icons/20.svg";
 import Hands from "../assets/icons/21.svg";
+import { useAuth } from '../context/AuthContext';
+import { useToast } from './Toast';
+import { getAccessToken } from '../lib/auth';
+import { BASE_URL } from '../lib/api';
 
-export default function PasswordSecurity() {
+export default function UploadId() {
+  const { refreshUser } = useAuth();
+  const { showToast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [idType, setIdType] = useState('drivers_license'); // 'drivers_license' | 'passport' | 'national_id'
   const [frontFile, setFrontFile] = useState(null);
@@ -19,6 +25,7 @@ export default function PasswordSecurity() {
   const [backError, setBackError] = useState('');
   const [frontUploading, setFrontUploading] = useState(false);
   const [backUploading, setBackUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [frontProgressStep, setFrontProgressStep] = useState(0); // 0..12
   const [backProgressStep, setBackProgressStep] = useState(0); // 0..12
   const frontInputRef = useRef(null);
@@ -64,7 +71,7 @@ export default function PasswordSecurity() {
   }
 
   function simulateUpload(which) {
-    const duration = 2200 + Math.floor(Math.random() * 700); // 2.2s - 2.9s
+    const duration = 1200 + Math.floor(Math.random() * 500); 
     const intervalMs = Math.max(80, Math.floor(duration / MAX_STEPS));
     let step = 0;
     if (which === 'front') {
@@ -96,7 +103,6 @@ export default function PasswordSecurity() {
       return;
     }
     setFrontError('');
-    // set immediately so filename shows, preview will render after upload finishes too
     const previewUrl = createPreview(file);
     setFrontFile({ file, name: file.name, previewUrl, type: file.type });
     simulateUpload('front');
@@ -117,20 +123,41 @@ export default function PasswordSecurity() {
     simulateUpload('back');
   }
 
-  async function uploadToServer() {
-    // Placeholder for future API integration
-    // Implement multipart/form-data upload here when backend is ready.
-    return Promise.resolve();
-  }
-
   async function handleSubmit() {
-    // Placeholder for future submit flow
-    await uploadToServer();
+    if (!frontFile) {
+      showToast('Please upload at least the front view of your ID.', 'error');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', frontFile.file);
+      
+      const token = getAccessToken();
+      const response = await fetch(`${BASE_URL}/users/upload-id`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await response.json();
+      
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || 'Upload failed.');
+      }
+
+      await refreshUser();
+      showToast('Identity verification document uploaded successfully.');
+      navigate('/details');
+    } catch (err) {
+      showToast(err.message || 'Failed to upload document.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function onIdTypeChange(nextType) {
     setIdType(nextType);
-    // reset previously uploaded files and errors
     if (frontFile?.previewUrl) URL.revokeObjectURL(frontFile.previewUrl);
     if (backFile?.previewUrl) URL.revokeObjectURL(backFile.previewUrl);
     setFrontFile(null);
@@ -155,12 +182,9 @@ export default function PasswordSecurity() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Nav */}
       <Navbar showNavLinks={false} />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pt-20 sm:pt-28 flex-1 w-full">
-        {/* Breadcrumb */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pt-20 sm:pt-28 flex-1 w-full text-[#333333]">
         <div className="mb-6 text-xs sm:text-sm text-gray-600 bg-[#FF7D011A] w-fit px-3 sm:px-4 py-2 rounded-full flex items-center">
           <Link to="/dashboard" className="underline font-semibold cursor-pointer hover:text-gray-900">Manage Account</Link>
           <span className="mx-1 sm:mx-2">|</span>
@@ -170,167 +194,165 @@ export default function PasswordSecurity() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left  */}
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900 mb-6 sm:mb-8">Upload Your ID</h1>
 
             <div className="mb-8">
               <h2 className="text-base font-medium text-gray-900 mb-4">Select ID Type</h2>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center cursor-pointer">
-                  <input type="radio" name="idType" checked={idType==='drivers_license'} onChange={() => onIdTypeChange('drivers_license')} className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500" />
-                  <span className="ml-2 text-sm text-gray-700">Driver's License</span>
-                </label>
-                <label className="flex items-center cursor-pointer">
-                  <input type="radio" name="idType" checked={idType==='passport'} onChange={() => onIdTypeChange('passport')} className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500" />
-                  <span className="ml-2 text-sm text-gray-700">Passport</span>
-                </label>
-                <label className="flex items-center cursor-pointer">
-                  <input type="radio" name="idType" checked={idType==='national_id'} onChange={() => onIdTypeChange('national_id')} className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500" />
-                  <span className="ml-2 text-sm text-gray-700">National ID Card</span>
-                </label>
+                {['drivers_license', 'passport', 'national_id'].map(type => (
+                  <label key={type} className="flex items-center cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="idType" 
+                      checked={idType === type} 
+                      onChange={() => onIdTypeChange(type)} 
+                      className="w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500" 
+                    />
+                    <span className="ml-2 text-sm text-gray-700 capitalize">{type.replace('_', ' ')}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
             <div className="mb-8">
               <h2 className="text-base font-medium text-gray-900 mb-4">Upload Instructions</h2>
               <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                    <svg width="23" height="16" viewBox="0 0 23 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0.707092 7.10703L7.90709 14.307L21.5071 0.707031" stroke="#FF7D01" stroke-linecap="square"/>
+                {[
+                  "Your ID must be current and valid. Expired documents will not be accepted.",
+                  "Ensure the entire document is visible, with no parts cut off, blurry, or obstructed.",
+                  "Take the photo in good lighting to make sure all details are clearly readable.",
+                  <>Accepted formats: <span className="font-medium text-[#333333]">JPG, PNG, or PDF</span>. Max size: <span className="font-medium text-[#333333]">5MB</span></>
+                ].map((text, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <svg width="23" height="16" viewBox="0 0 23 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mt-1">
+                        <path d="M0.707092 7.10703L7.90709 14.307L21.5071 0.707031" stroke="#FF7D01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-
-                  <p className="text-sm text-gray-600">Your ID must be current and valid. Expired documents will not be accepted.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                    <svg width="23" height="16" viewBox="0 0 23 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0.707092 7.10703L7.90709 14.307L21.5071 0.707031" stroke="#FF7D01" stroke-linecap="square"/>
-                    </svg>
-
-                  <p className="text-sm text-gray-600">Ensure the entire document is visible, with no parts cut off, blurry, or obstructed.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                    <svg width="23" height="16" viewBox="0 0 23 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0.707092 7.10703L7.90709 14.307L21.5071 0.707031" stroke="#FF7D01" stroke-linecap="square"/>
-                    </svg>
-
-                  <p className="text-sm text-gray-600">Take the photo in good lighting to make sure all details (text, photo, and ID number) are clearly readable.</p>
-                </div>
-                <div className="flex items-start gap-2">
-                    <svg width="23" height="16" viewBox="0 0 23 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M0.707092 7.10703L7.90709 14.307L21.5071 0.707031" stroke="#FF7D01" stroke-linecap="square"/>
-                    </svg>
-
-                  <p className="text-sm text-gray-600">Accepted formats: <span className="font-medium text-[#333333]">JPG, PNG, or PDF</span> Maximum file size: <span className="font-medium text-[#333333]">5MB</span></p>
-                </div>
+                    <p className="text-sm text-gray-600">{text}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className=''>
+            <div className="grid md:grid-cols-2 gap-6 mb-12">
+              <div>
                 <h3 className="text-base font-medium text-gray-900 mb-4">{frontHeading}</h3>
-                <div className="border border-dashed border-[#FF7D01] rounded-lg p-8 sm:p-12 flex items-center justify-center  min-h-[20rem]">
+                <div className="border border-dashed border-[#FF7D01] rounded-2xl p-8 flex items-center justify-center min-h-[20rem] bg-orange-50/30">
                   {frontUploading ? (
                     <div className="flex flex-col items-center justify-center w-full max-w-xs">
-                      <p className="text-xs text-gray-500 mb-2">Uploading...</p>
-                      <div className="w-full bg-orange-100 rounded-full h-2 mb-4 overflow-hidden">
-                        <div className={`bg-orange-500 h-2 rounded-full transition-all duration-100 ${mapStepToWidthClass(frontProgressStep)}`}></div>
+                      <p className="text-xs text-gray-500 mb-2 font-medium">Uploading...</p>
+                      <div className="w-full bg-orange-100 rounded-full h-1.5 mb-4 overflow-hidden">
+                        <div className={`bg-orange-500 h-full rounded-full transition-all duration-150 ${mapStepToWidthClass(frontProgressStep)}`}></div>
                       </div>
-                      <button disabled className="bg-orange-400 text-white/90 px-6 py-3 rounded-full flex items-center gap-2 transition-colors cursor-not-allowed">
-                        <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M8.5652 5.50373V14.5037M8.5652 5.50373L11.5652 8.50373M8.5652 5.50373L5.5652 8.50373M14.0652 10.5037C15.5842 10.5037 16.5652 9.27273 16.5652 7.75373C16.5651 7.15234 16.368 6.56756 16.0039 6.08893C15.6397 5.61031 15.1288 5.26424 14.5492 5.10373C14.46 3.98218 13.9952 2.92349 13.2299 2.09882C12.4646 1.27414 11.4435 0.731688 10.3317 0.559152C9.21993 0.386616 8.08246 0.594084 7.10319 1.14802C6.12392 1.70195 5.3601 2.56996 4.9352 3.61173C4.04063 3.36375 3.08418 3.4813 2.27628 3.93851C1.46837 4.39572 0.875179 5.15515 0.627202 6.04973C0.379224 6.9443 0.496772 7.90074 0.953985 8.70865C1.4112 9.51656 2.17063 10.1097 3.0652 10.3577" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span className="font-medium">Upload ID Front View</span>
-                      </button>
                     </div>
                   ) : !frontFile ? (
-                    <button onClick={() => frontInputRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full flex items-center gap-2 transition-colors">
-                      <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M8.5652 5.50373V14.5037M8.5652 5.50373L11.5652 8.50373M8.5652 5.50373L5.5652 8.50373M14.0652 10.5037C15.5842 10.5037 16.5652 9.27273 16.5652 7.75373C16.5651 7.15234 16.368 6.56756 16.0039 6.08893C15.6397 5.61031 15.1288 5.26424 14.5492 5.10373C14.46 3.98218 13.9952 2.92349 13.2299 2.09882C12.4646 1.27414 11.4435 0.731688 10.3317 0.559152C9.21993 0.386616 8.08246 0.594084 7.10319 1.14802C6.12392 1.70195 5.3601 2.56996 4.9352 3.61173C4.04063 3.36375 3.08418 3.4813 2.27628 3.93851C1.46837 4.39572 0.875179 5.15515 0.627202 6.04973C0.379224 6.9443 0.496772 7.90074 0.953985 8.70865C1.4112 9.51656 2.17063 10.1097 3.0652 10.3577" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
+                    <button onClick={() => frontInputRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full flex items-center gap-3 transition-all shadow-sm">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                       </svg>
-                      <span className="font-medium">Upload ID Front View</span>
+                      <span className="font-semibold">Upload ID Front</span>
                     </button>
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                      <p className="text-xs text-emerald-600 mb-2">Upload Complete</p>
-                      {frontFile.previewUrl ? (
-                        <img src={frontFile.previewUrl} alt={frontFile.name} className="max-h-56 object-contain rounded-md" />
-                      ) : (
-                        <div className="text-sm text-gray-700">{frontFile.name}</div>
-                      )}
-                      <div className="mt-4 flex gap-3">
-                        <button onClick={() => frontInputRef.current?.click()} className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full transition-colors">Change</button>
-                        <button onClick={() => { setFrontFile(null); setFrontError(''); }} className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-full transition-colors">Remove</button>
+                    <div className="w-full flex flex-col items-center">
+                      <div className="relative group">
+                        {frontFile.previewUrl ? (
+                          <img src={frontFile.previewUrl} alt="Front preview" className="max-h-64 rounded-xl shadow-md" />
+                        ) : (
+                          <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+                            <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            <span className="text-sm font-medium">{frontFile.name}</span>
+                          </div>
+                        )}
+                        <button onClick={() => setFrontFile(null)} className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors">
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
-                {frontError && <p className="mt-2 text-xs text-red-500">{frontError}</p>}
+                {frontError && <p className="mt-2 text-xs text-red-500 font-medium">{frontError}</p>}
                 <input ref={frontInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleFrontChange} />
               </div>
 
               {needsTwoSides && (
                 <div>
                   <h3 className="text-base font-medium text-gray-900 mb-4">{backHeading}</h3>
-                  <div className="border border-dashed border-[#FF7D01] rounded-lg p-8 sm:p-12 flex items-center justify-center min-h-[20rem]">
+                  <div className="border border-dashed border-[#FF7D01] rounded-2xl p-8 flex items-center justify-center min-h-[20rem] bg-orange-50/30">
                     {backUploading ? (
                       <div className="flex flex-col items-center justify-center w-full max-w-xs">
-                        <p className="text-xs text-gray-500 mb-2">Uploading...</p>
-                        <div className="w-full bg-orange-100 rounded-full h-2 mb-4 overflow-hidden">
-                          <div className={`bg-orange-500 h-2 rounded-full transition-all duration-100 ${mapStepToWidthClass(backProgressStep)}`}></div>
+                        <p className="text-xs text-gray-500 mb-2 font-medium">Uploading...</p>
+                        <div className="w-full bg-orange-100 rounded-full h-1.5 mb-4 overflow-hidden">
+                          <div className={`bg-orange-500 h-full rounded-full transition-all duration-150 ${mapStepToWidthClass(backProgressStep)}`}></div>
                         </div>
-                        <button disabled className="bg-orange-400 text-white/90 px-6 py-3 rounded-full flex items-center gap-2 transition-colors cursor-not-allowed">
-                          <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M8.5652 5.50373V14.5037M8.5652 5.50373L11.5652 8.50373M8.5652 5.50373L5.5652 8.50373M14.0652 10.5037C15.5842 10.5037 16.5652 9.27273 16.5652 7.75373C16.5651 7.15234 16.368 6.56756 16.0039 6.08893C15.6397 5.61031 15.1288 5.26424 14.5492 5.10373C14.46 3.98218 13.9952 2.92349 13.2299 2.09882C12.4646 1.27414 11.4435 0.731688 10.3317 0.559152C9.21993 0.386616 8.08246 0.594084 7.10319 1.14802C6.12392 1.70195 5.3601 2.56996 4.9352 3.61173C4.04063 3.36375 3.08418 3.4813 2.27628 3.93851C1.46837 4.39572 0.875179 5.15515 0.627202 6.04973C0.379224 6.9443 0.496772 7.90074 0.953985 8.70865C1.4112 9.51656 2.17063 10.1097 3.0652 10.3577" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                          <span className="font-medium">Upload ID Back View</span>
-                        </button>
                       </div>
                     ) : !backFile ? (
-                      <button onClick={() => backInputRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full flex items-center gap-2 transition-colors">
-                        <svg width="18" height="15" viewBox="0 0 18 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M8.5652 5.50373V14.5037M8.5652 5.50373L11.5652 8.50373M8.5652 5.50373L5.5652 8.50373M14.0652 10.5037C15.5842 10.5037 16.5652 9.27273 16.5652 7.75373C16.5651 7.15234 16.368 6.56756 16.0039 6.08893C15.6397 5.61031 15.1288 5.26424 14.5492 5.10373C14.46 3.98218 13.9952 2.92349 13.2299 2.09882C12.4646 1.27414 11.4435 0.731688 10.3317 0.559152C9.21993 0.386616 8.08246 0.594084 7.10319 1.14802C6.12392 1.70195 5.3601 2.56996 4.9352 3.61173C4.04063 3.36375 3.08418 3.4813 2.27628 3.93851C1.46837 4.39572 0.875179 5.15515 0.627202 6.04973C0.379224 6.9443 0.496772 7.90074 0.953985 8.70865C1.4112 9.51656 2.17063 10.1097 3.0652 10.3577" stroke="white" stroke-linecap="round" stroke-linejoin="round"/>
+                      <button onClick={() => backInputRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3.5 rounded-full flex items-center gap-3 transition-all shadow-sm">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
-                        <span className="font-medium">Upload ID Back View</span>
+                        <span className="font-semibold">Upload ID Back</span>
                       </button>
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-center">
-                        <p className="text-xs text-emerald-600 mb-2">Upload Complete</p>
-                        {backFile.previewUrl ? (
-                          <img src={backFile.previewUrl} alt={backFile.name} className="max-h-56 object-contain rounded-md" />
-                        ) : (
-                          <div className="text-sm text-gray-700">{backFile.name}</div>
-                        )}
-                        <div className="mt-4 flex gap-3">
-                          <button onClick={() => backInputRef.current?.click()} className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full transition-colors">Change</button>
-                          <button onClick={() => { setBackFile(null); setBackError(''); }} className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-full transition-colors">Remove</button>
+                      <div className="w-full flex flex-col items-center">
+                        <div className="relative group">
+                          {backFile.previewUrl ? (
+                            <img src={backFile.previewUrl} alt="Back preview" className="max-h-64 rounded-xl shadow-md" />
+                          ) : (
+                            <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+                              <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                              <span className="text-sm font-medium">{backFile.name}</span>
+                            </div>
+                          )}
+                          <button onClick={() => setBackFile(null)} className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                          </button>
                         </div>
                       </div>
                     )}
                   </div>
-                  {backError && <p className="mt-2 text-xs text-red-500">{backError}</p>}
+                  {backError && <p className="mt-2 text-xs text-red-500 font-medium">{backError}</p>}
                   <input ref={backInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleBackChange} />
                 </div>
               )}
             </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting || frontUploading || backUploading}
+                className="bg-[#333333] text-white px-12 py-4 rounded-full font-bold text-lg hover:bg-black transition-all shadow-lg disabled:opacity-50 flex items-center gap-3"
+              >
+                {isSubmitting ? 'Saving Details...' : 'Save & Submit Verification'}
+                {!isSubmitting && (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
+          <div className="w-full lg:w-80 lg:flex-shrink-0">
+             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">More Actions</h2>
+             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+               <ActionItem link="/password-security" icon={Lock} text="Password and Security" />
+               <ActionItem link="/payment" icon={CreditCard} text="Payment Methods" />
+               <ActionItem link="/privacy" icon={Shield} text="Privacy Policy" />
+               <ActionItem link="/customer-support" icon={HelpCircle} text="Contact Support" />
+             </div>
+          </div>
         </div>
       </main>
 
-
-
-
-
-      {/* Footer */}
-      <footer className="mt-auto text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
-            <p><b className=''>©</b> 2025 Smash Apartments. All Rights Reserved</p>
-            <span className="hidden sm:inline">•</span>
-            <p className="hover:text-gray-900 transition-colors cursor-pointer">Privacy Policy</p>
-            <span className="hidden sm:inline">•</span>
-            <p className="hover:text-gray-900 transition-colors cursor-pointer">Terms of Use</p>
+      <footer className="mt-auto border-t border-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-gray-500">
+            <p>© 2025 Smash Apartments. All Rights Reserved</p>
+            <div className="flex gap-4">
+              <span className="hover:text-gray-900 cursor-pointer">Privacy Policy</span>
+              <span className="hover:text-gray-900 cursor-pointer">Terms of Use</span>
+            </div>
           </div>
         </div>
       </footer>
@@ -338,17 +360,16 @@ export default function PasswordSecurity() {
   );
 }
 
-
-function ActionItem({ icon, text }) {
+function ActionItem({ icon, text, link }) {
   return (
-    <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0">
+    <Link to={link} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-b-0 group">
       <div className="flex items-center gap-3">
-        <div className='w-10 h-10 flex items-center justify-center rounded-full bg-[#3333330D]'>
-          <img src={icon} alt={text} className="w-4 h-4 text-gray-400" />
+        <div className='w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 group-hover:bg-orange-100 transition-colors'>
+          <img src={icon} alt="" className="w-4 h-4 opacity-70" />
         </div>
-        
-        <span className="text-gray-700 font-extralight">{text}</span>
+        <span className="text-gray-700 font-medium text-sm group-hover:text-gray-900">{text}</span>
       </div>
-    </button>
+      <svg className="w-4 h-4 text-gray-300 group-hover:text-orange-500 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+    </Link>
   );
 }

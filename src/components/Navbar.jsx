@@ -7,6 +7,21 @@ import { useState, useEffect, useRef  } from "react";
 import { useAuth } from "../context/AuthContext";
 import { forgotPassword } from "../lib/auth";
 
+const getAvatarColor = (name) => {
+  const colors = [
+    'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
+    'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
+    'bg-orange-500', 'bg-emerald-500'
+  ];
+  if (!name) return 'bg-gray-400';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+
 const Navbar = ({ showNavLinks = true }) => {
   const { user, loading, loginUser, registerUser, logoutUser } = useAuth();
 
@@ -422,26 +437,52 @@ const Navbar = ({ showNavLinks = true }) => {
               >
                 {user ? user.first_name : "Guest"}
               </motion.span>
-              <motion.img 
-                src={profile} 
-                alt="Profile" 
-                className="w-6 h-6"
-                // whileHover={{ rotate: 360 }}
-                // transition={{ duration: 0.5 }}
-              />
+              {user ? (
+                user.avatar_url ? (
+                  <motion.img 
+                    src={user.avatar_url} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(user.first_name)}`}>
+                    {user.first_name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                )
+              ) : (
+                <motion.img 
+                  src={profile} 
+                  alt="Profile" 
+                  className="w-6 h-6"
+                />
+              )}
+
             </motion.div>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <motion.img 
-                src={profile} 
-                alt="Profile" 
-                className="w-6 h-6"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              />
+              {user ? (
+                user.avatar_url ? (
+                  <motion.img 
+                    src={user.avatar_url} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${getAvatarColor(user.first_name)}`}>
+                    {user.first_name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                )
+              ) : (
+                <motion.img 
+                  src={profile} 
+                  alt="Profile" 
+                  className="w-6 h-6"
+                />
+              )}
+
               <span className="text-sm font-medium text-gray-700 hidden sm:block">
                 {user ? user.first_name : "Guest"}
               </span>

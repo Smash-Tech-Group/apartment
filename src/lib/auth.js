@@ -10,6 +10,21 @@ export const getAccessToken = () => {
     return accessToken;
 };
 
+/**
+ * Ensures we have a valid access token. If the in-memory token is lost 
+ * (e.g. after a page refresh), it attempts to refresh it using the cookie.
+ */
+export const getValidAccessToken = async () => {
+    if (accessToken) return accessToken;
+    const rt = getRefreshTokenCookie();
+    if (!rt) return null;
+    try {
+        return await refreshToken();
+    } catch (e) {
+        return null;
+    }
+};
+
 const setRefreshTokenCookie = (token) => {
     document.cookie = `rt=${token}; path=/; secure; samesite=strict; max-age=2592000`; // 30 days
 };

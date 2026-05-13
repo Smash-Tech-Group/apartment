@@ -3,26 +3,68 @@ import WizardLayout from "../../components/wizard/WizardLayout";
 import { Input, Select } from "../../components/wizard/Field";
 import { useWizard } from "../../context/WizardContext";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../../components/Toast";
+import { apiFetch } from "../../lib/api";
+
 
 const BANKS = ["Select Bank","Access Bank","GTBank","UBA","Zenith Bank","First Bank"];
 
 export default function Complete() {
   const { state, dispatch } = useWizard();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [errors, setErrors] = React.useState({});
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  function finish() {
+  async function finish() {
     const e = {};
     if (!state.payout.accountNumber) e.accountNumber = "Required";
     if (!state.payout.bank || state.payout.bank === "Select Bank") e.bank = "Required";
     if (!state.payout.accountName) e.accountName = "Required";
     setErrors(e);
+
     if (Object.keys(e).length === 0) {
-      // eslint-disable-next-line no-console
-      console.log("SUBMIT", state);
-      navigate("/upload/success");
+      setIsSubmitting(true);
+      try {
+        const payload = {
+          name: state.basicInfo.name || `${state.basicInfo.type.charAt(0).toUpperCase() + state.basicInfo.type.slice(1)} in ${state.basicInfo.location || 'Unknown'}`,
+          type: state.basicInfo.type,
+          location: state.basicInfo.location,
+          description: state.basicInfo.description,
+          beds: state.basicInfo.beds,
+          baths: state.basicInfo.baths,
+          adults: state.basicInfo.guests?.adults || 0,
+          children: state.basicInfo.guests?.children || 0,
+          infants: state.basicInfo.guests?.infants || 0,
+          images: state.photos.map(p => p.url),
+          video: state.video,
+          features: state.features,
+          price: state.price,
+          account_number: state.payout.accountNumber,
+          bank: state.payout.bank,
+          account_name: state.payout.accountName
+        };
+
+        const res = await apiFetch('/apartments', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (res.success) {
+          showToast("Apartment listing created successfully!");
+          dispatch({ type: "RESET" });
+          navigate("/upload/success");
+        } else {
+          showToast(res.message || "Failed to create listing", "error");
+        }
+      } catch (err) {
+        showToast(err.message || "An error occurred while submitting", "error");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   }
+
 
   return (
     <WizardLayout
