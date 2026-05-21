@@ -1,211 +1,108 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { BASE_URL } from '../lib/api';
+
+// Fallback images for rides with no photos
+import car1 from "../assets/car1.webp";
+import car2 from "../assets/car2.webp";
+import car3 from "../assets/car3.webp";
 
 const CarContext = createContext();
 
-// Mock data for cars (moved from CarCat component)
-const mockCars = {
-  'Suv': [
-    {
-      id: 1,
-      type: '2014 Toyota Corolla',
-      location: 'Gwarinpa, Abuja',
-      posted: 'Posted 1 month ago',
-      amount: 45000,
-      rating: 4.8,
-      isNew: false
-    },
-    {
-      id: 2,
-      type: '2016 Toyota Prado',
-      location: 'Maitama, Abuja',
-      posted: 'Posted 3 weeks ago',
-      amount: 65000,
-      rating: 4.6,
-      isNew: true
-    },
-    {
-      id: 3,
-      type: '2017 Toyota Land Cruiser',
-      location: 'Wuse 2, Abuja',
-      posted: 'Posted 2 weeks ago',
-      amount: 35000,
-      rating: 4.5,
-      isNew: false
-    }
-  ],
-  'Sedan': [
-    {
-      id: 4,
-      type: '2009 Honda Accord',
-      location: 'Garki, Abuja',
-      posted: 'Posted 1 week ago',
-      amount: 25000,
-      rating: 4.3,
-      isNew: false
-    },
-    {
-      id: 5,
-      type: '2010 Honda Pilot',
-      location: 'Asokoro, Abuja',
-      posted: 'Posted 2 months ago',
-      amount: 40000,
-      rating: 4.7,
-      isNew: false
-    },
-    {
-      id: 6,
-      type: '2009 Toyota Camry',
-      location: 'Kubwa, Abuja',
-      posted: 'Posted 1 month ago',
-      amount: 20000,
-      rating: 4.2,
-      isNew: true
-    }
-  ],
-  'Van': [
-    {
-      id: 7,
-      type: '2018 Toyota Hiace',
-      location: 'Gwarinpa, Abuja',
-      posted: 'Posted 2 months ago',
-      amount: 85000,
-      rating: 4.9,
-      isNew: false
-    },
-    {
-      id: 8,
-      type: '2019 Ford Transit',
-      location: 'Maitama, Abuja',
-      posted: 'Posted 1 month ago',
-      amount: 120000,
-      rating: 4.8,
-      isNew: true
-    },
-    {
-      id: 9,
-      type: '2018 Toyota Camry',
-      location: 'Jahi, Abuja',
-      posted: 'Posted 3 weeks ago',
-      amount: 70000,
-      rating: 4.6,
-      isNew: false
-    }
-  ],
-};
+const FALLBACK_IMAGES = [car1, car2, car3];
 
-const exploreCarsData = [
-  {
-    id: 16,
-    type: '2009 Toyota Camry',
-    location: 'Gwarinpa, Abuja',
-    posted: 'Posted 2 months ago',
-    amount: 55000,
-    rating: 6.0,
-    isNew: false
-  },
-  {
-    id: 17,
-    type: '2009 Toyota Camry',
-    location: 'Maitama, Abuja',
-    posted: 'Posted 1 month ago',
-    amount: 75000,
-    rating: 5.8,
-    isNew: true
-  },
-  {
-    id: 18,
-    type: '2009 Toyota Camry',
-    location: 'Asokoro, Abuja',
-    posted: 'Posted 3 weeks ago',
-    amount: 90000,
-    rating: 5.9,
-    isNew: false
-  },
-  {
-    id: 19,
-    type: '2009 Toyota Camry',
-    location: 'Wuse 2, Abuja',
-    posted: 'Posted 1 week ago',
-    amount: 45000,
-    rating: 5.7,
-    isNew: false
-  },
-  {
-    id: 20,
-    type: '2009 Toyota Camry',
-    location: 'Jahi, Abuja',
-    posted: 'Posted 2 weeks ago',
-    amount: 110000,
-    rating: 6.0,
-    isNew: true
-  },
-  {
-    id: 21,
-    type: '2009 Toyota Camry',
-    location: 'Garki, Abuja',
-    posted: 'Posted 1 month ago',
-    amount: 52000,
-    rating: 4.8,
-    isNew: false
-  },
-  {
-    id: 22,
-    type: '2009 Toyota Camry',
-    location: 'Kubwa, Abuja',
-    posted: 'Posted 3 weeks ago',
-    amount: 38000,
-    rating: 4.5,
-    isNew: false
-  },
-  {
-    id: 23,
-    type: '2009 Toyota Camry',
-    location: 'Central Area, Abuja',
-    posted: 'Posted 1 week ago',
-    amount: 35000,
-    rating: 4.6,
-    isNew: true
-  },
-  {
-    id: 24,
-    type: '2009 Toyota Camry',
-    location: 'Lugbe, Abuja',
-    posted: 'Posted 2 weeks ago',
-    amount: 65000,
-    rating: 4.7,
-    isNew: false
-  },
-  {
-    id: 25,
-    type: '2009 Toyota Camry',
-    location: 'Wuse, Abuja',
-    posted: 'Posted 1 month ago',
-    amount: 28000,
-    rating: 4.3,
-    isNew: false
-  },
-  {
-    id: 26,
-    type: '2009 Toyota Camry',
-    location: 'Maitama, Abuja',
-    posted: 'Posted 2 months ago',
-    amount: 85000,
-    rating: 4.9,
-    isNew: true
-  },
-  {
-    id: 27,
-    type: '2009 Toyota Camry',
-    location: 'Asokoro, Abuja',
-    posted: 'Posted 1 week ago',
-    amount: 150000,
-    rating: 5.0,
-    isNew: false
+// Helper: turn a backend created_at into "Posted X ago"
+function timeAgo(dateStr) {
+  const now = new Date();
+  const created = new Date(dateStr);
+  const diffMs = now - created;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 1) return 'Posted today';
+  if (diffDays === 1) return 'Posted 1 day ago';
+  if (diffDays < 7) return `Posted ${diffDays} days ago`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `Posted ${weeks} week${weeks > 1 ? 's' : ''} ago`;
   }
-];
+  const months = Math.floor(diffDays / 30);
+  return `Posted ${months} month${months > 1 ? 's' : ''} ago`;
+}
+
+// Transform a backend ride object into the shape the CarCat card expects
+function transformRide(r) {
+  // Extract photo URLs from the RideMedia array
+  const photos = Array.isArray(r.photos) && r.photos.length > 0
+    ? r.photos.map(p => p.url || p)
+    : FALLBACK_IMAGES;
+
+  // Map ride_type enum to display-friendly category
+  const typeMap = {
+    suv: 'Suv',
+    sedan: 'Sedan',
+    van: 'Van',
+    coupe: 'Sedan',
+    truck: 'Van',
+  };
+
+  return {
+    id: r.id,
+    type: `${r.ride_type?.charAt(0).toUpperCase()}${r.ride_type?.slice(1)} · ${r.seat_count} Seats`,
+    location: r.pickup_location,
+    posted: timeAgo(r.created_at),
+    amount: r.price,
+    rating: 4.5, // Placeholder until reviews are built
+    isNew: (new Date() - new Date(r.created_at)) < 30 * 24 * 60 * 60 * 1000,
+    images: photos,
+    category: typeMap[(r.ride_type || '').toLowerCase()] || 'Suv',
+  };
+}
 
 export const CarProvider = ({ children }) => {
+  const [allCars, setAllCars] = useState({ Suv: [], Sedan: [], Van: [] });
+  const [exploreCars, setExploreCars] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [likedCars, setLikedCars] = useState(new Set());
+
+  // Search filter state for real-time filtering
+  const [searchFilters, setSearchFilters] = useState({
+    location: '',
+    pickUpDate: '',
+    pickUpTime: '',
+    returnDate: '',
+    returnTime: '',
+    needDriver: null,
+  });
+
+  // Fetch public rides on mount
+  useEffect(() => {
+    async function fetchPublicRides() {
+      setLoading(true);
+      try {
+        const res = await fetch(`${BASE_URL}/rides/public`);
+        const data = await res.json();
+        const rides = (data?.data || []).map(transformRide);
+
+        // Categorize by vehicle type
+        const categorized = { Suv: [], Sedan: [], Van: [] };
+        rides.forEach((r) => {
+          const cat = r.category;
+          if (categorized[cat]) {
+            categorized[cat].push(r);
+          } else {
+            categorized['Suv'].push(r);
+          }
+        });
+
+        setAllCars(categorized);
+        setExploreCars(rides);
+      } catch (err) {
+        console.error('Failed to fetch public rides:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPublicRides();
+  }, []);
 
   const toggleLike = useCallback((carId) => {
     setLikedCars(prev => {
@@ -223,12 +120,43 @@ export const CarProvider = ({ children }) => {
     return likedCars.has(carId);
   }, [likedCars]);
 
+  // ── Filtered cars based on search filters ──
+  const filterBySearch = useCallback((cars) => {
+    const q = (searchFilters.location || '').trim().toLowerCase();
+
+    return cars.filter((c) => {
+      // Filter by location (partial, case-insensitive match on location or type)
+      if (q && !((c.location || '').toLowerCase().includes(q) || (c.type || '').toLowerCase().includes(q))) {
+        return false;
+      }
+      return true;
+    });
+  }, [searchFilters]);
+
+  const filteredCars = useMemo(() => {
+    const result = {};
+    for (const [key, cars] of Object.entries(allCars)) {
+      result[key] = filterBySearch(cars);
+    }
+    return result;
+  }, [allCars, filterBySearch]);
+
+  const filteredExploreCars = useMemo(() => {
+    return filterBySearch(exploreCars);
+  }, [exploreCars, filterBySearch]);
+
   const value = {
-    allCars: mockCars,
-    exploreCars: exploreCarsData,
+    allCars,
+    exploreCars,
+    filteredCars,
+    filteredExploreCars,
+    searchFilters,
+    setSearchFilters,
     likedCars,
     toggleLike,
-    isCarLiked
+    isCarLiked,
+    loading,
+    FALLBACK_IMAGES,
   };
 
   return (

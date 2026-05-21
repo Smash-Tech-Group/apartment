@@ -38,23 +38,16 @@ export default function CompleteRide() {
       formData.append("price", String(state.price || 0));
       formData.append("currency", "NGN");
 
-      if (state.photos && state.photos.length > 0) {
-        state.photos.forEach(photo => {
-          // Append the actual File object
-          const fileToAppend = photo.file || photo;
-          if (fileToAppend instanceof File) {
-            formData.append("photos", fileToAppend);
-          }
-        });
-      } else {
-        throw new Error("You must upload at-least 1 photo.");
+      // Photos are already uploaded to Cloudinary — send URLs
+      const photoUrls = (state.photos || []).map(p => p.url).filter(Boolean);
+      if (photoUrls.length === 0) {
+        throw new Error("You must upload at least 1 photo.");
       }
+      formData.append("photo_urls", JSON.stringify(photoUrls));
 
-      if (state.video) {
-        const videoFile = state.video.file || state.video;
-        if (videoFile instanceof File) {
-          formData.append("video", videoFile);
-        }
+      // Video URL (already uploaded to Cloudinary)
+      if (state.video?.url) {
+        formData.append("video_url", state.video.url);
       }
 
       await apiFetch("/rides", {

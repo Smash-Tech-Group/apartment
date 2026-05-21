@@ -168,6 +168,18 @@
         };
       }
 
+      // Control visibility of GTranslate widget based on current page
+      function controlWidgetVisibility() {
+        var wrapper = document.querySelector('.gtranslate_wrapper');
+        if (wrapper) {
+          if (window.location.pathname.includes('dashboard')) {
+            wrapper.style.display = 'none';
+          } else {
+            wrapper.style.display = '';
+          }
+        }
+      }
+
       // Control visibility on page load
       document.addEventListener("DOMContentLoaded", function () {
         controlWidgetVisibility();

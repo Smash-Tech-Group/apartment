@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { forgotPassword } from "../lib/auth";
 
 const Navbar = ({ showNavLinks = true }) => {
-  const { user, loading, loginUser, registerUser, logoutUser } = useAuth();
+  const { user, loading, loginUser, registerUser, logoutUser, isAdmin } = useAuth();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -348,6 +348,17 @@ const Navbar = ({ showNavLinks = true }) => {
                         >
                           My Account
                         </motion.button>
+
+                        {isAdmin && (
+                          <motion.button
+                            onClick={() => { navigate('/admin'); setIsDropdownOpen(false); }}
+                            className="w-full text-left py-2 px-3 text-orange-600 hover:font-semibold border-t transition-colors duration-200"
+                            whileHover={{ x: 4 }}
+                            transition={{ type: "spring", stiffness: 300 }}
+                          >
+                            ⚡ Admin Dashboard
+                          </motion.button>
+                        )}
 
                         <motion.button
                           onClick={() => handleAuthClick("Notifications")}

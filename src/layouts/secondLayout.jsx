@@ -1,15 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Calendar, Users } from 'lucide-react';
 import SecImg from "../assets/secondImg.webp"
 import Housing from "../components/housingCat"
+import { useProperty } from '../context/PropertyContext';
 
 const SecondLayout = () => {
+ const { setSearchFilters } = useProperty();
+
  const [searchData, setSearchData] = useState({
     destination: '',
     checkIn: '',
     checkOut: '',
     guests: ''
   });
+
+  // Sync search data to context whenever it changes
+  useEffect(() => {
+    setSearchFilters({
+      destination: searchData.destination,
+      checkIn: searchData.checkIn,
+      checkOut: searchData.checkOut,
+      guests: parseInt(searchData.guests) || 0,
+    });
+  }, [searchData, setSearchFilters]);
 
   const handleInputChange = (field, value) => {
     setSearchData(prev => ({
@@ -20,7 +33,6 @@ const SecondLayout = () => {
 
   const handleSearch = () => {
     console.log('Search data:', searchData);
-    // Add your search logic here
   };
 
   return (

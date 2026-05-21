@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, MapPin, Calendar, Users, ChevronDown } from 'lucide-react';
 import homeImg from "../assets/homepage.webp"
-import { div } from 'framer-motion/client';
+import { useProperty } from '../context/PropertyContext';
 
 const HomeBookings = () => {
+  const { setSearchFilters } = useProperty();
+
   const [searchData, setSearchData] = useState({
     destination: '',
     checkIn: '',
@@ -17,6 +19,17 @@ const HomeBookings = () => {
 
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Sync search data to context whenever it changes
+  useEffect(() => {
+    const totalGuests = searchData.guests.adults + searchData.guests.children + searchData.guests.infants;
+    setSearchFilters({
+      destination: searchData.destination,
+      checkIn: searchData.checkIn,
+      checkOut: searchData.checkOut,
+      guests: totalGuests,
+    });
+  }, [searchData, setSearchFilters]);
 
   const handleInputChange = (field, value) => {
     setSearchData(prev => ({

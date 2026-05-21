@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { getCurrentUser, login, register, logout, refreshToken, getRefreshTokenCookie } from '../lib/auth';
 
 const AuthContext = createContext();
@@ -57,8 +57,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Role helper booleans
+    const isAdmin = user?.role === 'superadmin';
+    const isVendor = user?.role === 'vendor' || user?.role === 'superadmin';
+
+    const value = useMemo(() => ({
+        user,
+        loading,
+        loginUser,
+        registerUser,
+        logoutUser,
+        setUser,
+        refreshUser,
+        isAdmin,
+        isVendor,
+    }), [user, loading, isAdmin, isVendor]);
+
     return (
-        <AuthContext.Provider value={{ user, loading, loginUser, registerUser, logoutUser, setUser, refreshUser }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

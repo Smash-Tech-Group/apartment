@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Calendar, Users } from 'lucide-react';
 import homeImg from "../assets/carHeroImg.webp"
+import { useCar } from '../context/CarContext';
 
 
 const CarBookings = () => {
+  const { setSearchFilters } = useCar();
+
   const [searchData, setSearchData] = useState({
     destination: '',
     pickUpDate: '',
@@ -12,6 +15,18 @@ const CarBookings = () => {
     returnTime: '',
     needDriver: false
   });
+
+  // Sync search data to context whenever it changes
+  useEffect(() => {
+    setSearchFilters({
+      location: searchData.destination,
+      pickUpDate: searchData.pickUpDate,
+      pickUpTime: searchData.pickUpTime,
+      returnDate: searchData.returnDate,
+      returnTime: searchData.returnTime,
+      needDriver: searchData.needDriver,
+    });
+  }, [searchData, setSearchFilters]);
 
   const handleInputChange = (field, value) => {
     setSearchData(prev => ({
@@ -22,7 +37,6 @@ const CarBookings = () => {
 
   const handleSearch = () => {
     console.log('Search data:', searchData);
-    // Add your search logic here
   };
 
   return (

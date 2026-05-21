@@ -113,8 +113,8 @@ const Footer = () => {
               <p className="flex items-center text-gray-600 text-xs">
                 © {new Date().getFullYear()} Smash Apartments. All Rights Reserved
 
-                <p className='px-2 text-gray-600 text-xs'>• Privacy Policy</p>
-<p className='px-2 text-gray-600 text-xs'>• Terms of Use</p>
+                <Link to="/privacy-policy" className='px-2 text-gray-600 text-xs hover:text-black hover:font-semibold transition-colors duration-200'>• Privacy Policy</Link>
+<Link to="/terms-of-use" className='px-2 text-gray-600 text-xs hover:text-black hover:font-semibold transition-colors duration-200'>• Terms of Use</Link>
               </p>
             </div>
 

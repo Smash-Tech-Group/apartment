@@ -1,29 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import filter from "../assets/filter.svg"
 import carIcon1 from "../assets/carIcon1.svg"
 import carIcon2 from "../assets/carIcon2.svg"
 import carIcon3 from "../assets/carIcon4.svg"
 
+// Fallback images
 import car1 from "../assets/car1.webp"
 import car2 from "../assets/car2.webp"
 import car3 from "../assets/car3.webp"
-import car4 from "../assets/car4.webp"
-import car5 from "../assets/car5.webp"
 
-import car6 from "../assets/car2.webp"
-import car7 from "../assets/car3.webp"
-import car8 from "../assets/car4.webp"
-import car9 from "../assets/car5.webp"
-import car10 from "../assets/car6.webp"
-import car11 from "../assets/car7.webp"
-import car12 from "../assets/car8.webp"
-import car13 from "../assets/car10.webp"
-import { useCar } from '../context/CarContext'; // Assuming you'll create this context
+import { useCar } from '../context/CarContext';
+
+const FALLBACK_IMAGES = [car1, car2, car3];
 
 const CarCat = () => {
-  const { allCars, exploreCars, toggleLike, isCarLiked } = useCar();
+  const { allCars, exploreCars, filteredCars, filteredExploreCars, searchFilters, toggleLike, isCarLiked, loading } = useCar();
 
   const [activeCategory, setActiveCategory] = useState('Suv');
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -37,36 +30,13 @@ const CarCat = () => {
     { id: 'filter', name: 'Filter', icon: filter }
   ];
 
-  // Create image arrays for cars that don't have them
-  const imageArrays = {
-    1: [car1, car2, car3, car4, car5],
-    2: [car7, car2, car3, car4, car5],
-    3: [car6, car2, car3, car4, car5],
-    4: [car7, car2, car3, car4, car5],
-    5: [car2, car2, car3, car4, car5],
-    6: [car8, car2, car3, car4, car5],
-    7: [car9, car2, car3, car4, car5],
-    8: [car3, car2, car3, car4, car5],
-    9: [car10, car2, car3, car4, car5],
-    10: [car11, car2, car3, car4, car5],
-    11: [car12, car2, car3, car4, car5],
-    12: [car13, car2, car3, car4, car5],
-    13: [car5, car2, car3, car4, car5],
-    14: [car8, car2, car3, car4, car5],
-    15: [car9, car2, car3, car4, car5],
-    16: [car5, car2, car3, car4, car5],
-    17: [car2, car3, car4, car5],
-    18: [car13, car2, car3, car4, car5],
-    19: [car12, car2, car3, car4, car5],
-    20: [car11, car2, car3, car4, car5],
-    21: [car10, car2, car3, car4, car5],
-    22: [car9, car2, car3, car4, car5],
-    23: [car8, car2, car3, car4, car5],
-    24: [car7, car2, car3, car4, car5],
-    25: [car6, car2, car3, car4, car5],
-    26: [car4, car2, car3, car4, car5],
-    27: [car2, car2, car3, car4, car5]
-  };
+  // Get images for a car — use its own photos or fallback
+  const getCarImages = useCallback((car) => {
+    if (car.images && car.images.length > 0) {
+      return car.images;
+    }
+    return FALLBACK_IMAGES;
+  }, []);
 
   const handleToggleLike = useCallback((carId, e) => {
     e.stopPropagation();
@@ -82,11 +52,8 @@ const CarCat = () => {
     const [dragOffset, setDragOffset] = useState(0);
     const [isAnimating, setIsAnimating] = useState(false);
 
-    // Use context to check if car is liked
     const isLiked = isCarLiked(property.id);
-    
-    // Get images for this car
-    const carImages = imageArrays[property.id] || [car1, car2, car3, car4, car5];
+    const carImages = getCarImages(property);
 
     const nextImage = useCallback((e) => {
       e?.preventDefault();
@@ -325,10 +292,8 @@ const CarCat = () => {
     
     setIsTransitioning(true);
     
-    // Fade out current content
     setTimeout(() => {
       setActiveCategory(categoryName);
-      // Fade in new content after a brief delay
       setTimeout(() => {
         setIsTransitioning(false);
       }, 100);
@@ -337,9 +302,11 @@ const CarCat = () => {
 
   // Initialize and update displayed properties when activeCategory changes
   useEffect(() => {
-    const currentProperties = allCars[activeCategory] || [];
+    const currentProperties = filteredCars[activeCategory] || [];
     setDisplayedProperties(currentProperties);
-  }, [activeCategory, allCars]);
+  }, [activeCategory, filteredCars]);
+
+  const isSearchActive = (searchFilters.location || '').trim().length > 0;
 
   return (
     <>
@@ -355,10 +322,6 @@ const CarCat = () => {
                     category.name === 'Filter' 
                       ? 'flex items-center p-3 gap-2 bg-tertiary justify-center cursor-pointer transition-all duration-300 rounded-full group relative flex-shrink-0' 
                       : 'flex flex-col items-center cursor-pointer transition-all justify-center duration-300 pb-[5x] px-1 rounded-full group relative flex-shrink-0'
-                  } ${
-                    activeCategory === category.name 
-                      ? '' 
-                      : ''
                   }`}
                   onClick={() => handleCategoryChange(category.name)} 
                 >
@@ -383,80 +346,139 @@ const CarCat = () => {
           </div>
         </div>
 
-        {/* Top Picks Section */}
-        <div className="mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-[24px] font-bold mb-1 text-left"> 
-              Best Deals In Your Location
-            </h2>
-            <p className="text-gray-600 text-left text-xs mb-4">Explore unbeatable car rental deals near you. Get the best rates on top-quality vehicles for a smooth and affordable ride.</p>
+        {/* Loading State */}
+        {loading && (
+          <div className="mb-16">
+            <div className="text-center mb-8">
+              <h2 className="text-[24px] font-bold mb-1 text-left">
+                Best Deals In Your Location
+              </h2>
+              <p className="text-gray-600 text-left text-xs mb-4">Loading rides…</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 rounded-xl h-[350px] mb-3" />
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
+                  <div className="h-3 bg-gray-200 rounded w-1/3" />
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div 
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-all duration-700 ease-out ${
-              isTransitioning 
-                ? 'opacity-0 transform translate-y-12 scale-95' 
-                : 'opacity-100 transform translate-y-0 scale-100'
-            }`}
-            style={{
-              transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            {displayedProperties.slice(0, 3).map((property, index) => (
-              <div
-                key={property.id}
-                className={`transition-all duration-500 ease-out ${
+        )}
+
+        {/* Top Picks — always visible when not loading */}
+        {!loading && (
+          <div className="mb-16">
+            <div className="text-center mb-8">
+              <h2 className="text-[24px] font-bold mb-1 text-left"> 
+                Best Deals In Your Location
+              </h2>
+              <p className="text-gray-600 text-left text-xs mb-4">Explore unbeatable car rental deals near you. Get the best rates on top-quality vehicles for a smooth and affordable ride.</p>
+            </div>
+            
+            {displayedProperties.length > 0 ? (
+              <div 
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-all duration-700 ease-out ${
                   isTransitioning 
-                    ? 'opacity-0 transform translate-y-8' 
-                    : 'opacity-100 transform translate-y-0'
+                    ? 'opacity-0 transform translate-y-12 scale-95' 
+                    : 'opacity-100 transform translate-y-0 scale-100'
                 }`}
                 style={{
-                  transitionDelay: isTransitioning ? '0ms' : `${index * 100}ms`,
                   transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
-                <PropertyCard property={property} index={index} />
+                {displayedProperties.slice(0, 3).map((property, index) => (
+                  <div
+                    key={property.id}
+                    className={`transition-all duration-500 ease-out ${
+                      isTransitioning 
+                        ? 'opacity-0 transform translate-y-8' 
+                        : 'opacity-100 transform translate-y-0'
+                    }`}
+                    style={{
+                      transitionDelay: isTransitioning ? '0ms' : `${index * 100}ms`,
+                      transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                  >
+                    <PropertyCard property={property} index={index} />
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-2xl">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-50 flex items-center justify-center">
+                  <Search className="w-8 h-8 text-orange-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  {isSearchActive ? 'No cars match your search' : 'No cars available'}
+                </h3>
+                <p className="text-gray-500 text-sm max-w-md mx-auto">
+                  {isSearchActive
+                    ? 'Try adjusting your location to see more results.'
+                    : 'New car listings will appear here once they are published.'}
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Explore Listings Section */}
-        <div className="mb-8">
-          <h2 className="text-[24px] text-left font-bold mb-1">Explore Listings</h2>
-          <p className="text-gray-600 text-xs mb-6">Explore top listings with premium features, great deals, and unmatched performance.</p>
-          
-          {/* Desktop: 4 columns, 3 rows (12 cards) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {exploreCars.slice(0, 12).map((property) => (
-              <PropertyCard key={property.id} property={property} />
-            ))}
+        {/* Explore Listings — always visible when not loading */}
+        {!loading && (
+          <div className="mb-8">
+            <h2 className="text-[24px] text-left font-bold mb-1">Explore Listings</h2>
+            <p className="text-gray-600 text-xs mb-6">Explore top listings with premium features, great deals, and unmatched performance.</p>
+            
+            {filteredExploreCars.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                  {filteredExploreCars.slice(0, 12).map((property) => (
+                    <PropertyCard key={property.id} property={property} />
+                  ))}
+                </div>
+                
+                {showMoreExplore && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 transition-all duration-500 ease-in-out">
+                    {filteredExploreCars.slice(12).map((property) => (
+                      <PropertyCard key={property.id} property={property} />
+                    ))}
+                  </div>
+                )}
+                
+                {filteredExploreCars.length > 12 && (
+                  <div className="text-center">
+                    <button 
+                      onClick={() => setShowMoreExplore(!showMoreExplore)}
+                      className="bg-primary text-xs text-white px-8 py-3 rounded-full font-medium hover:bg-primary transition-colors duration-200 flex items-center gap-2 mx-auto"
+                    >
+                      {showMoreExplore ? 'Show Less' : 'Show More'}
+                      {showMoreExplore ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 !text-white !border-white" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-2xl">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-50 flex items-center justify-center">
+                  <Search className="w-8 h-8 text-orange-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  {isSearchActive ? 'No listings match your search' : 'No listings available yet'}
+                </h3>
+                <p className="text-gray-500 text-sm max-w-md mx-auto">
+                  {isSearchActive
+                    ? 'Try a different location or adjust your filters.'
+                    : 'Be the first to list your car! Listings will appear here once published.'}
+                </p>
+              </div>
+            )}
           </div>
-          
-          {/* Additional cards shown when "More" is clicked */}
-          {showMoreExplore && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 transition-all duration-500 ease-in-out">
-              {exploreCars.slice(12).map((property) => (
-                <PropertyCard key={property.id} property={property} />
-              ))}
-            </div>
-          )}
-          
-          {/* More Button */}
-          <div className="text-center">
-            <button 
-              onClick={() => setShowMoreExplore(!showMoreExplore)}
-              className="bg-primary text-xs text-white px-8 py-3 rounded-full font-medium hover:bg-primary transition-colors duration-200 flex items-center gap-2 mx-auto"
-            >
-              {showMoreExplore ? 'Show Less' : 'Show More'}
-              {showMoreExplore ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4 !text-white !border-white" />
-              )}
-            </button>
-          </div>
-        </div>
+        )}
       </section>
       
       <style>{`

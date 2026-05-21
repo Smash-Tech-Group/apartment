@@ -54,8 +54,8 @@ export default function Dashboard() {
       color: "orange",
       items: [
         { icon: PenPaper, text: "Terms of Use", link: "/terms-of-use" },
-        { icon: ShieldCheckIcon, text: "Privacy Policy", link: "/privacy" },
-        { icon: CookieIcon, text: "Cookies Policy", link: "/cookies" }
+        { icon: ShieldCheckIcon, text: "Privacy Policy", link: "/privacy-policy" },
+        { icon: CookieIcon, text: "Cookies Policy", link: "/cookies-privacy" }
       ]
     },
     {

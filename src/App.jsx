@@ -7,6 +7,7 @@ import { PropertyProvider } from './context/PropertyContext';
 import { CarProvider } from './context/CarContext';
 import { WizardProvider } from './context/WizardContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 
 import HomePage from './pages/homePage';
 import CarRentals from './pages/carRentals';
@@ -42,6 +43,21 @@ import CarsRental from './components/CarsRental';
 import CustomerSupport from './components/CustomerSupport';
 import HelpfulArticles from './components/HelpfulArticles';
 import NotFound from './components/NotFound';
+import AboutPage from './pages/about';
+import PrivacyPolicyPage from './pages/privacy-policy';
+import CookiesPolicyPage from './pages/cookies-policy';
+import TermsOfUsePage from './pages/terms-of-use';
+import CustomerServicePage from './pages/customer-service';
+import FAQPage from './pages/faq';
+import SafetyGuidesPage from './pages/safety-guides';
+
+// Admin components
+import AdminDashboard from './components/admin/AdminDashboard';
+import AdminUsers from './components/admin/AdminUsers';
+import AdminUserDetail from './components/admin/AdminUserDetail';
+import AdminProperties from './components/admin/AdminProperties';
+import AdminRides from './components/admin/AdminRides';
+import AdminSupport from './components/admin/AdminSupport';
 
 function App() {
   return (
@@ -92,7 +108,22 @@ function App() {
                 <Route path="/upload-rides/complete" element={<ProtectedRoute><CompleteRide /></ProtectedRoute>} />
                 <Route path="/upload-rides/success" element={<ProtectedRoute><SuccessRide /></ProtectedRoute>} />
 
+                {/* Superadmin Routes */}
+                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+                <Route path="/admin/users/:id" element={<AdminRoute><AdminUserDetail /></AdminRoute>} />
+                <Route path="/admin/properties" element={<AdminRoute><AdminProperties /></AdminRoute>} />
+                <Route path="/admin/rides" element={<AdminRoute><AdminRides /></AdminRoute>} />
+                <Route path="/admin/support" element={<AdminRoute><AdminSupport /></AdminRoute>} />
+
                 <Route path="/helpful" element={<HelpfulArticles />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/cookies-privacy" element={<CookiesPolicyPage />} />
+                <Route path="/terms-of-use" element={<TermsOfUsePage />} />
+                <Route path="/Customer-service" element={<CustomerServicePage />} />
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/safety-guides" element={<SafetyGuidesPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </WizardProvider>

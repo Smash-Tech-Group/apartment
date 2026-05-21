@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Calendar, Users } from 'lucide-react';
 import SecImg from "../assets/carsecond.png"
 import CarCat from "../components/carCat"
+import { useCar } from '../context/CarContext';
 
 const SecondLayout = () => {
+ const { setSearchFilters } = useCar();
+
  const [searchData, setSearchData] = useState({
     destination: '',
     checkIn: '',
     checkOut: '',
     guests: ''
   });
+
+  // Sync search data to context whenever it changes
+  useEffect(() => {
+    setSearchFilters({
+      location: searchData.destination,
+      pickUpDate: searchData.checkIn,
+      pickUpTime: '',
+      returnDate: searchData.checkOut,
+      returnTime: '',
+      needDriver: null,
+    });
+  }, [searchData, setSearchFilters]);
 
   const handleInputChange = (field, value) => {
     setSearchData(prev => ({
@@ -20,7 +35,6 @@ const SecondLayout = () => {
 
   const handleSearch = () => {
     console.log('Search data:', searchData);
-    // Add your search logic here
   };
 
   return (
