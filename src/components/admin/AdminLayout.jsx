@@ -5,7 +5,7 @@ import {
   LayoutDashboard,
   Home,
   Users,
-  CalendarDays,
+  Car,
   CreditCard,
   TrendingUp,
   HelpCircle,
@@ -18,9 +18,9 @@ import {
 
 const NAV_ITEMS = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/properties', label: 'Listings', icon: Home },
+  { path: '/admin/properties', label: 'Stay Listings', icon: Home },
+  { path: '/admin/rides', label: 'Car Listings', icon: Car },
   { path: '/admin/users', label: 'Users', icon: Users },
-  { path: '/admin/rides', label: 'Bookings', icon: CalendarDays },
   { path: '/admin/payments', label: 'Payments', icon: CreditCard },
   { path: '/admin/reports', label: 'Report', icon: TrendingUp },
   { path: '/admin/support', label: 'Support', icon: HelpCircle },

@@ -9,7 +9,8 @@ import {
   TrendingUp, 
   ArrowUpRight,
   Gauge,
-  BarChart3
+  BarChart3,
+  Car
 } from 'lucide-react';
 
 const StatCard = ({ label, value, icon: Icon, color, trend }) => {
@@ -28,6 +29,11 @@ const StatCard = ({ label, value, icon: Icon, color, trend }) => {
       bg: 'bg-[#EFF8FF]',
       border: 'border-[#0070F3]/20',
       text: 'text-[#0070F3]'
+    },
+    purple: {
+      bg: 'bg-[#F5F3FF]',
+      border: 'border-[#8B5CF6]/20',
+      text: 'text-[#8B5CF6]'
     }
   };
 
@@ -164,7 +170,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
             label="Revenue" 
             value={stats?.total_revenue ? `₦${stats.total_revenue.toLocaleString()}` : "₦120,000"} 
@@ -180,10 +186,17 @@ const AdminDashboard = () => {
             trend="12%" 
           />
           <StatCard 
-            label="Active Listings" 
+            label="Stay Listings" 
             value={stats?.active_properties || 156} 
             icon={BarChart3} 
             color="blue" 
+            trend="12%" 
+          />
+          <StatCard 
+            label="Car Listings" 
+            value={stats?.total_rides || 48} 
+            icon={Car} 
+            color="purple" 
             trend="12%" 
           />
         </div>
