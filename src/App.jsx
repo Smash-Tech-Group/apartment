@@ -8,6 +8,7 @@ import { CarProvider } from './context/CarContext';
 import { WizardProvider } from './context/WizardContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import VendorListingRoute from './components/VendorListingRoute';
 
 import HomePage from './pages/homePage';
 import CarRentals from './pages/carRentals';
@@ -77,7 +78,7 @@ function App() {
                 <Route path="/dashboard/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/details/" element={<ProtectedRoute><PersonalDetail /></ProtectedRoute>} />
                 <Route path="/password-security/" element={<ProtectedRoute><PasswordSecurity /></ProtectedRoute>} />
-                <Route path="/manage-stays/" element={<ProtectedRoute><ManageStays /></ProtectedRoute>} />
+                <Route path="/manage-stays/" element={<ProtectedRoute><VendorListingRoute><ManageStays /></VendorListingRoute></ProtectedRoute>} />
                 <Route path="/manage-rides" element={<ProtectedRoute><ManageRides /></ProtectedRoute>} />
                 <Route path="/id-verify" element={<ProtectedRoute><IdVerify /></ProtectedRoute>} />
                 <Route path="/upload-id" element={<ProtectedRoute><UploadId /></ProtectedRoute>} />
@@ -90,14 +91,14 @@ function App() {
                 <Route path="/customer-support" element={<ProtectedRoute><CustomerSupport /></ProtectedRoute>} />
                 
                 {/* Upload Stays Flow */}
-                <Route path="/upload/basic" element={<ProtectedRoute><Basic /></ProtectedRoute>} />
-                <Route path="/upload/location" element={<ProtectedRoute><Location /></ProtectedRoute>} />
-                <Route path="/upload/photos" element={<ProtectedRoute><Photos /></ProtectedRoute>} />
-                <Route path="/upload/features" element={<ProtectedRoute><Features /></ProtectedRoute>} />
-                <Route path="/upload/review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
-                <Route path="/upload/complete" element={<ProtectedRoute><Complete /></ProtectedRoute>} />
-                <Route path="/upload/success" element={<ProtectedRoute><Success /></ProtectedRoute>} />
-                <Route path="/manage-stays-populate" element={<ProtectedRoute><ManageStaysPopulate /></ProtectedRoute>} />
+                <Route path="/upload/basic" element={<ProtectedRoute><VendorListingRoute><Basic /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/upload/location" element={<ProtectedRoute><VendorListingRoute><Location /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/upload/photos" element={<ProtectedRoute><VendorListingRoute><Photos /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/upload/features" element={<ProtectedRoute><VendorListingRoute><Features /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/upload/review" element={<ProtectedRoute><VendorListingRoute><Review /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/upload/complete" element={<ProtectedRoute><VendorListingRoute><Complete /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/upload/success" element={<ProtectedRoute><VendorListingRoute><Success /></VendorListingRoute></ProtectedRoute>} />
+                <Route path="/manage-stays-populate" element={<ProtectedRoute><VendorListingRoute><ManageStaysPopulate /></VendorListingRoute></ProtectedRoute>} />
 
                 {/* Upload Rides Flow */}
                 <Route path="/upload-rides/basic" element={<ProtectedRoute><BasicRide /></ProtectedRoute>} />

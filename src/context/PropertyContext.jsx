@@ -66,6 +66,11 @@ function transformProperty(p) {
   };
 }
 
+function isPubliclyVisibleStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  return normalized === 'active' || normalized === 'published' || normalized === 'approved';
+}
+
 const FALLBACK_IMAGES = [house1, house2, house3];
 
 export const PropertyProvider = ({ children }) => {
@@ -103,7 +108,9 @@ export const PropertyProvider = ({ children }) => {
       try {
         const res = await fetch(`${BASE_URL}/properties/public`);
         const data = await res.json();
-        const properties = (data?.data?.properties || []).map(transformProperty);
+        const properties = (data?.data?.properties || [])
+          .filter((property) => isPubliclyVisibleStatus(property?.status))
+          .map(transformProperty);
 
         // Categorize properties by type keyword
         const categorized = {

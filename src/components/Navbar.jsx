@@ -6,12 +6,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef  } from "react";
 import { useAuth } from "../context/AuthContext";
 import { forgotPassword } from "../lib/auth";
+import { useToast } from "./Toast";
+import VendorEligibilityModal from "./VendorEligibilityModal";
+import {
+  getVendorEligibilityCriteria,
+  isPendingVendorRequest,
+  isVendorVerifiedBySuperAdmin,
+} from "../lib/vendorEligibility";
 
 const Navbar = ({ showNavLinks = true }) => {
   const { user, loading, loginUser, registerUser, logoutUser, isAdmin } = useAuth();
+  const { showToast } = useToast();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVendorCriteriaOpen, setIsVendorCriteriaOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -94,6 +103,29 @@ const Navbar = ({ showNavLinks = true }) => {
   };
 
   const passwordStrength = getPasswordStrength(password);
+  const vendorCriteria = getVendorEligibilityCriteria(user);
+  const vendorVerified = isVendorVerifiedBySuperAdmin(user);
+  const vendorPending = isPendingVendorRequest(user);
+
+  const handleListStayClick = () => {
+    setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsVendorCriteriaOpen(true);
+  };
+
+  const handleVendorProceed = () => {
+    if (!vendorVerified) {
+      showToast(
+        vendorPending
+          ? "Your vendor request is pending Super Admin approval."
+          : "Vendor verification is required before you can list a stay.",
+        "error"
+      );
+      return;
+    }
+    setIsVendorCriteriaOpen(false);
+    navigate("/manage-stays");
+  };
 
   const handleAuthClick = (type) => {
     if (type === "dashboard" || type === "profile" || type === "settings") {
@@ -370,7 +402,7 @@ const Navbar = ({ showNavLinks = true }) => {
                         </motion.button>
 
                         <motion.button
-                          onClick={() => handleAuthClick("dashboard")}
+                          onClick={handleListStayClick}
                           className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold border-t transition-colors duration-200"
                           whileHover={{ x: 4 }}
                           transition={{ type: "spring", stiffness: 300 }}
@@ -1340,6 +1372,23 @@ const Navbar = ({ showNavLinks = true }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <VendorEligibilityModal
+        isOpen={isVendorCriteriaOpen}
+        onClose={() => setIsVendorCriteriaOpen(false)}
+        onProceed={handleVendorProceed}
+        onGoToDetails={() => {
+          setIsVendorCriteriaOpen(false);
+          navigate('/details');
+        }}
+        onGoToIdVerification={() => {
+          setIsVendorCriteriaOpen(false);
+          navigate('/id-verify');
+        }}
+        criteria={vendorCriteria}
+        isVendorVerified={vendorVerified}
+        isPendingApproval={vendorPending}
+      />
     </>
   );
 };

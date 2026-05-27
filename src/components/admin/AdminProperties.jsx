@@ -10,6 +10,13 @@ const STATUS_COLORS = {
   suspended: 'bg-rose-50 text-[#F04438]',
 };
 
+const STATUS_LABELS = {
+  active: 'Approved',
+  pending_approval: 'Pending Approval',
+  rejected: 'Declined',
+  suspended: 'Suspended',
+};
+
 const AdminProperties = () => {
   const [properties, setProperties] = useState([]);
   const [total, setTotal] = useState(0);
@@ -92,7 +99,7 @@ const AdminProperties = () => {
             <option value="">All Statuses</option>
             <option value="active">Active</option>
             <option value="pending_approval">Pending Approval</option>
-            <option value="rejected">Rejected</option>
+            <option value="rejected">Declined</option>
             <option value="suspended">Suspended</option>
           </select>
         </div>
@@ -140,7 +147,7 @@ const AdminProperties = () => {
                       <td className="px-6 py-4 text-[#1a174d] font-extrabold">₦{p.price?.toLocaleString()}</td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[p.status] || 'bg-gray-50 text-gray-500'}`}>
-                          {p.status?.replace('_', ' ')}
+                          {STATUS_LABELS[p.status] || p.status?.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-400 font-medium text-xs">{new Date(p.created_at).toLocaleDateString()}</td>
@@ -160,7 +167,7 @@ const AdminProperties = () => {
                                 disabled={actionLoading === p.id}
                                 className="px-3 py-1.5 text-xs font-bold text-[#F04438] bg-[#FEF3F2] hover:bg-[#FEF3F2]/80 rounded-xl transition-all shadow-sm"
                               >
-                                Reject
+                                Decline
                               </button>
                             </>
                           )}
@@ -329,7 +336,7 @@ const AdminProperties = () => {
                         <Info className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
                         <div className="min-w-0">
                           <span className="font-bold text-gray-600 block">Current Status</span>
-                          <span className="capitalize font-extrabold text-[#ff6b00]">{selectedProperty.status?.replace('_', ' ')}</span>
+                          <span className="capitalize font-extrabold text-[#ff6b00]">{STATUS_LABELS[selectedProperty.status] || selectedProperty.status?.replace('_', ' ')}</span>
                         </div>
                       </div>
                     </div>
@@ -424,7 +431,7 @@ const AdminProperties = () => {
                       disabled={actionLoading === selectedProperty.id}
                       className="px-4 py-2 text-xs font-bold text-white bg-[#F04438] hover:bg-[#F04438]/90 rounded-xl transition-all shadow-md"
                     >
-                      Reject
+                      Decline
                     </button>
                   </>
                 )}

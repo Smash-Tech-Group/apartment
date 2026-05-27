@@ -14,16 +14,18 @@ export default function Success() {
           <div className="mx-auto mb-6 h-16 w-16 flex items-center justify-center">
             <img src={Success1} alt="Success" />
           </div>
-          <h1 className="text-4xl font-semibold text-gray-800 mb-4">Stay Listing Successful</h1>
+          <h1 className="text-4xl font-semibold text-gray-800 mb-4">Stay Listing Submitted</h1>
+          <p className="mb-6 text-sm text-gray-500">
+            Your listing is now pending Super Admin approval. It will appear publicly once approved.
+          </p>
           <button 
-            onClick={() => navigate('/')} 
+            onClick={() => navigate('/manage-stays')} 
             className="rounded-full bg-[#FF7D01] text-white px-6 py-3 text-sm hover:bg-orange-500"
           >
-            Back To Home
+            Back To Manage Stays
           </button>
         </div>
       </div>
     </div>
   );
 }
-

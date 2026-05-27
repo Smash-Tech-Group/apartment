@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getAdminUsers } from '../../lib/admin';
+import { isPendingVendorRequest } from '../../lib/vendorEligibility';
 import {
   LayoutDashboard,
   Home,
@@ -33,6 +35,31 @@ const AdminLayout = ({ children, title }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
+  const [pendingVendorCount, setPendingVendorCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchPendingVendors = async () => {
+      try {
+        const res = await getAdminUsers({ role: 'vendor', page: 1, limit: 200 });
+        const vendorUsers = res?.data?.users || [];
+        const pendingCount = vendorUsers.filter((vendorUser) => isPendingVendorRequest(vendorUser)).length;
+        if (mounted) {
+          setPendingVendorCount(pendingCount);
+        }
+      } catch (err) {
+        if (mounted) {
+          setPendingVendorCount(0);
+        }
+      }
+    };
+
+    fetchPendingVendors();
+    return () => {
+      mounted = false;
+    };
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logoutUser();
@@ -85,6 +112,11 @@ const AdminLayout = ({ children, title }) => {
                 >
                   <Icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? 'text-[#ff6b00]' : 'text-gray-400'}`} />
                   <span>{item.label}</span>
+                  {item.path === '/admin/users' && pendingVendorCount > 0 && (
+                    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-[#FF6B00] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {pendingVendorCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -146,6 +178,15 @@ const AdminLayout = ({ children, title }) => {
 
           {/* Right Header Badges */}
           <div className="flex items-center gap-4">
+            {pendingVendorCount > 0 && (
+              <Link
+                to="/admin/users"
+                className="hidden sm:inline-flex items-center gap-2 rounded-full border border-[#FF6B00]/30 bg-[#FFF4ED] px-4 py-2 text-xs font-bold text-[#FF6B00]"
+              >
+                <span className="h-2 w-2 rounded-full bg-[#FF6B00]"></span>
+                <span>{pendingVendorCount} Vendor Request{pendingVendorCount > 1 ? 's' : ''}</span>
+              </Link>
+            )}
             <div className="flex items-center gap-2 bg-[#ff6b00] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-md cursor-default">
               <span className="w-2 h-2 bg-white rounded-full inline-block animate-pulse"></span>
               <span>Super Admin</span>

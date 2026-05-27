@@ -18,11 +18,25 @@ import { useToast } from './Toast';
 function StatusBadge({ status }) {
   const styles = {
     active: "bg-green-100 text-green-700",
-    draft:  "bg-gray-100 text-gray-500",
+    pending_approval: "bg-orange-100 text-orange-700",
+    rejected: "bg-rose-100 text-rose-700",
+    suspended: "bg-rose-100 text-rose-700",
+    draft: "bg-gray-100 text-gray-500",
   };
+
+  const labels = {
+    active: "approved",
+    pending_approval: "pending approval",
+    rejected: "declined",
+    suspended: "suspended",
+    draft: "draft",
+  };
+
+  const key = status || "draft";
+
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${styles[status] || styles.draft}`}>
-      {status}
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${styles[key] || styles.draft}`}>
+      {labels[key] || key.replaceAll("_", " ")}
     </span>
   );
 }
@@ -245,7 +259,7 @@ export default function ManageStays() {
               {[
                 { n: 1, img: Bunk,  title: "Describe Your Space",          desc: "Let us know where your place is located and how many guests it comfortably accommodates." },
                 { n: 2, img: Desk,  title: "Showcase Its Best Features",   desc: "Upload at least five high-quality photos, then add the amenities that come with your stay—we'll guide you along the way." },
-                { n: 3, img: Hands, title: "Set Your Details and Go Live", desc: "Select a nightly rate, confirm a few quick details, and publish your listing for travelers to discover." },
+                { n: 3, img: Hands, title: "Set Your Details and Go Live", desc: "Select a nightly rate, confirm a few quick details, and publish your listing for travelers to discover.." },
               ].map(({ n, img, title, desc }) => (
                 <div key={n} className="flex gap-1">
                   <div className="flex-shrink-0 w-10 h-10 text-black flex items-center justify-center font-semibold text-md">{n}</div>

@@ -30,6 +30,7 @@ export default function Complete() {
   function buildPayload() {
     const { basicInfo, features, photos, video, price, payout } = state;
     return {
+      status:      "pending_approval",
       name:        basicInfo.name || basicInfo.location,
       type:        basicInfo.type,
       location:    basicInfo.location,
@@ -62,7 +63,7 @@ export default function Complete() {
       });
 
       dispatch({ type: "RESET" });
-      showToast("Your listing is live! 🎉");
+      showToast("Listing submitted for Super Admin approval.");
       navigate("/upload/success");
     } catch (err) {
       if (err.status === 409) {

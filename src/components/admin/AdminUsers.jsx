@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
-import { getAdminUsers, changeUserRole, changeUserStatus } from '../../lib/admin';
+import { getAdminUsers, changeUserStatus, verifyVendor } from '../../lib/admin';
+import { isPendingVendorRequest, isVendorVerifiedBySuperAdmin } from '../../lib/vendorEligibility';
 
 const ROLE_BADGES = {
   user: 'bg-gray-50 text-gray-500',
@@ -18,6 +19,7 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || '');
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState('');
+  const [pendingVendorCount, setPendingVendorCount] = useState(0);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -34,6 +36,18 @@ const AdminUsers = () => {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  const fetchPendingVendorCount = useCallback(async () => {
+    try {
+      const res = await getAdminUsers({ role: 'vendor', page: 1, limit: 200 });
+      const vendorUsers = res.data?.users || [];
+      setPendingVendorCount(vendorUsers.filter((vendorUser) => isPendingVendorRequest(vendorUser)).length);
+    } catch (err) {
+      setPendingVendorCount(0);
+    }
+  }, []);
+
+  useEffect(() => { fetchPendingVendorCount(); }, [fetchPendingVendorCount]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
@@ -41,10 +55,24 @@ const AdminUsers = () => {
   };
 
   const handleToggleStatus = async (userId, currentStatus) => {
-    setActionLoading(userId);
+    setActionLoading(`status-${userId}`);
     try {
       await changeUserStatus(userId, !currentStatus);
       await fetchUsers();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleVendorDecision = async (userId, action) => {
+    const reason = action === 'reject' ? prompt('Reason for rejection:') : null;
+    if (action === 'reject' && reason === null) return;
+    setActionLoading(`verify-${userId}`);
+    try {
+      await verifyVendor(userId, action, reason);
+      await Promise.all([fetchUsers(), fetchPendingVendorCount()]);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -90,6 +118,13 @@ const AdminUsers = () => {
 
         {/* Results count */}
         <p className="text-gray-400 text-sm font-semibold">{total} user{total !== 1 ? 's' : ''} found</p>
+        {pendingVendorCount > 0 && (
+          <div className="rounded-2xl border border-[#FF6B00]/20 bg-[#FFF9F5] px-4 py-3">
+            <p className="text-sm font-bold text-[#FF6B00]">
+              {pendingVendorCount} vendor verification request{pendingVendorCount > 1 ? 's' : ''} awaiting review.
+            </p>
+          </div>
+        )}
 
         {/* Table */}
         <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm">
@@ -132,11 +167,17 @@ const AdminUsers = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {u.role === 'vendor' ? (
-                          <span className={`text-xs font-bold inline-flex items-center px-2.5 py-1 rounded-full ${u.vendor_verified ? 'text-[#12B76A] bg-[#EBFDF5]' : 'text-[#FF6B00] bg-[#FFF4ED]'}`}>
-                            {u.vendor_verified ? '✓ Verified' : '⏳ Pending'}
+                        {isVendorVerifiedBySuperAdmin(u) && (
+                          <span className="text-xs font-bold inline-flex items-center px-2.5 py-1 rounded-full text-[#12B76A] bg-[#EBFDF5]">
+                            ✓ Verified
                           </span>
-                        ) : (
+                        )}
+                        {!isVendorVerifiedBySuperAdmin(u) && isPendingVendorRequest(u) && (
+                          <span className="text-xs font-bold inline-flex items-center px-2.5 py-1 rounded-full text-[#FF6B00] bg-[#FFF4ED]">
+                            ⏳ Pending
+                          </span>
+                        )}
+                        {!isVendorVerifiedBySuperAdmin(u) && !isPendingVendorRequest(u) && (
                           <span className="text-gray-400 text-xs">—</span>
                         )}
                       </td>
@@ -159,15 +200,33 @@ const AdminUsers = () => {
                           </Link>
                           <button
                             onClick={() => handleToggleStatus(u.id, u.is_active)}
-                            disabled={actionLoading === u.id}
+                            disabled={actionLoading === `status-${u.id}`}
                             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all shadow-sm ${
                               u.is_active
                                 ? 'text-[#F04438] bg-[#FEF3F2] hover:bg-[#FEF3F2]/80'
                                 : 'text-[#12B76A] bg-[#EBFDF5] hover:bg-[#EBFDF5]/80'
                             }`}
                           >
-                            {actionLoading === u.id ? '...' : u.is_active ? 'Deactivate' : 'Activate'}
+                            {actionLoading === `status-${u.id}` ? '...' : u.is_active ? 'Deactivate' : 'Activate'}
                           </button>
+                          {isPendingVendorRequest(u) && (
+                            <>
+                              <button
+                                onClick={() => handleVendorDecision(u.id, 'approve')}
+                                disabled={actionLoading === `verify-${u.id}`}
+                                className="px-3 py-1.5 text-xs font-bold text-[#12B76A] bg-[#EBFDF5] hover:bg-[#EBFDF5]/80 rounded-xl transition-all shadow-sm"
+                              >
+                                {actionLoading === `verify-${u.id}` ? '...' : 'Approve Vendor'}
+                              </button>
+                              <button
+                                onClick={() => handleVendorDecision(u.id, 'reject')}
+                                disabled={actionLoading === `verify-${u.id}`}
+                                className="px-3 py-1.5 text-xs font-bold text-[#F04438] bg-[#FEF3F2] hover:bg-[#FEF3F2]/80 rounded-xl transition-all shadow-sm"
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

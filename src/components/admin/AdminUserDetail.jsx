@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import { getAdminUserDetail, changeUserRole, verifyVendor, changeUserStatus } from '../../lib/admin';
+import { isPendingVendorRequest, isVendorVerifiedBySuperAdmin } from '../../lib/vendorEligibility';
 
 const AdminUserDetail = () => {
   const { id } = useParams();
@@ -169,16 +170,19 @@ const AdminUserDetail = () => {
               </div>
             </div>
 
-            {/* Vendor Verification (only for vendors) */}
-            {user.role === 'vendor' && (
+            {/* Vendor Verification */}
+            {(user.role === 'vendor' || isPendingVendorRequest(user) || isVendorVerifiedBySuperAdmin(user)) && (
               <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
                 <h4 className="text-[#1a174d] font-bold text-lg mb-5 border-b border-gray-50 pb-2">Vendor Verification</h4>
                 <div className="space-y-4">
-                  <InfoItem label="Verified" value={user.vendor_verified ? 'Yes ✓' : 'No'} />
+                  <InfoItem label="Verified" value={isVendorVerifiedBySuperAdmin(user) ? 'Yes ✓' : 'No'} />
+                  {!isVendorVerifiedBySuperAdmin(user) && isPendingVendorRequest(user) && (
+                    <InfoItem label="Request Status" value="Pending Super Admin Review" />
+                  )}
                   {user.vendor_verified_at && (
                     <InfoItem label="Verified At" value={new Date(user.vendor_verified_at).toLocaleString()} />
                   )}
-                  {!user.vendor_verified && (
+                  {!isVendorVerifiedBySuperAdmin(user) && (
                     <div className="flex gap-3 pt-2">
                       <button
                         onClick={() => handleVerifyVendor('approve')}
