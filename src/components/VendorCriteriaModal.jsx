@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { useToast } from "./Toast";
@@ -10,7 +10,7 @@ import { useToast } from "./Toast";
  *   isOpen   : boolean
  *   onClose  : () => void
  */
-export default function VendorCriteriaModal({ isOpen, onClose }) {
+export default function VendorCriteriaModal({ isOpen, onClose, onVerified }) {
   const navigate   = useNavigate();
   const { showToast } = useToast();
 
@@ -19,14 +19,15 @@ export default function VendorCriteriaModal({ isOpen, onClose }) {
   const [submitting, setSubmitting]     = useState(false);
 
   // Fetch vendor status on open
+  const onError = useCallback(() => showToast("Failed to load verification status.", "error"), [showToast]);
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
     apiFetch("/users/me/vendor-status")
       .then((res) => setVendorStatus(res?.data || res))
-      .catch(() => showToast("Failed to load verification status.", "error"))
+.catch(onError)
       .finally(() => setLoading(false));
-  }, [isOpen]);
+  }, [isOpen, onError]);
 
   if (!isOpen) return null;
 
@@ -125,10 +126,10 @@ export default function VendorCriteriaModal({ isOpen, onClose }) {
         <div className="mt-6 p-4 bg-green-50 rounded-2xl text-center">
           <p className="text-green-700 font-medium text-sm">✓ You are a verified vendor!</p>
           <button
-            onClick={() => { navigate("/manage-rides"); onClose(); }}
+            onClick={() => { onClose(); if (onVerified) onVerified(); }}
             className="mt-3 px-6 py-2.5 bg-[#FF7D01] text-white text-sm font-semibold rounded-full hover:bg-[#e76e00] transition-colors"
           >
-            Go to Manage Rides
+            Continue to Listing
           </button>
         </div>
       );
