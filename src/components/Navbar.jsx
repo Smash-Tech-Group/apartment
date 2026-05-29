@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef  } from "react";
 import { useAuth } from "../context/AuthContext";
 import { forgotPassword } from "../lib/auth";
+import VendorCriteriaModal from "./VendorCriteriaModal";
 
 const Navbar = ({ showNavLinks = true }) => {
   const { user, loading, loginUser, registerUser, logoutUser, isAdmin } = useAuth();
@@ -14,6 +15,7 @@ const Navbar = ({ showNavLinks = true }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
 
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
@@ -379,7 +381,15 @@ const Navbar = ({ showNavLinks = true }) => {
                         </motion.button>
 
                         <motion.button
-                          onClick={() => handleAuthClick("dashboard")}
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            setIsMobileMenuOpen(false);
+                            if (user?.vendor_verified) {
+                              navigate("/manage-rides");
+                            } else {
+                              setIsVendorModalOpen(true);
+                            }
+                          }}
                           className="w-full text-left py-2 px-3 text-gray-700 hover:font-semibold border-t transition-colors duration-200"
                           whileHover={{ x: 4 }}
                           transition={{ type: "spring", stiffness: 300 }}
@@ -1340,6 +1350,12 @@ const Navbar = ({ showNavLinks = true }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Vendor Criteria Modal */}
+      <VendorCriteriaModal
+        isOpen={isVendorModalOpen}
+        onClose={() => setIsVendorModalOpen(false)}
+      />
     </>
   );
 };
