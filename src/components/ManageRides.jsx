@@ -15,7 +15,7 @@ import Car3 from "../assets/icons/30.svg";
 import VendorCriteriaModal from './VendorCriteriaModal';
 
 export default function ManageRides() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isVendor } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [rides, setRides] = useState([]);
@@ -24,7 +24,7 @@ export default function ManageRides() {
   const navigate = useNavigate();
 
   function handleAddListing() {
-    if (user?.vendor_verified) {
+    if (isVendor) {
       setIsModalOpen(true);
     } else {
       setIsVendorModalOpen(true);
@@ -204,6 +204,7 @@ export default function ManageRides() {
       <VendorCriteriaModal
         isOpen={isVendorModalOpen}
         onClose={() => setIsVendorModalOpen(false)}
+        onVerified={() => setIsModalOpen(true)}
       />
 
       {/* How-to Modal */}
