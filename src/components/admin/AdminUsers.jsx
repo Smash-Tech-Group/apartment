@@ -4,25 +4,45 @@ import AdminLayout from './AdminLayout';
 import { getAdminUsers, changeUserRole, changeUserStatus } from '../../lib/admin';
 
 const ROLE_BADGES = {
-  user: 'bg-gray-50 text-gray-500',
-  vendor: 'bg-purple-50 text-[#8B5CF6]',
+  user:       'bg-gray-50 text-gray-500',
+  vendor:     'bg-purple-50 text-[#8B5CF6]',
   superadmin: 'bg-orange-50 text-[#FF6B00]',
 };
 
 const AdminUsers = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [users, setUsers] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || '');
-  const [page, setPage] = useState(1);
+  const [users, setUsers]               = useState([]);
+  const [total, setTotal]               = useState(0);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState(searchParams.get('search') || '');
+  const [roleFilter, setRoleFilter]     = useState(searchParams.get('role') || '');
+  const [page, setPage]                 = useState(1);
   const [actionLoading, setActionLoading] = useState('');
+
+  // ---------------------------------------------------------------------------
+  // NEW — pending vendor filter
+  // ---------------------------------------------------------------------------
+  const [pendingVendorOnly, setPendingVendorOnly] = useState(false);
+  const [pendingVendorCount, setPendingVendorCount] = useState(0);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getAdminUsers({ search: search || undefined, role: roleFilter || undefined, page, limit: 20 });
+      const params = {
+        search: search || undefined,
+        page,
+        limit: 20,
+      };
+
+      if (pendingVendorOnly) {
+        // Filter: vendors who have not yet been verified
+        params.role             = 'vendor';
+        params.vendor_verified  = false;
+      } else {
+        params.role = roleFilter || undefined;
+      }
+
+      const res = await getAdminUsers(params);
       setUsers(res.data?.users || []);
       setTotal(res.data?.total || 0);
     } catch (err) {
@@ -30,9 +50,20 @@ const AdminUsers = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, page]);
+  }, [search, roleFilter, page, pendingVendorOnly]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  // Fetch pending vendor count separately (for badge)
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      const res = await getAdminUsers({ role: 'vendor', vendor_verified: false, limit: 1 });
+      setPendingVendorCount(res.data?.total || 0);
+    } catch {
+      // non-critical — badge just won't show
+    }
+  }, []);
+
+  useEffect(() => { fetchUsers(); },       [fetchUsers]);
+  useEffect(() => { fetchPendingCount(); }, [fetchPendingCount]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -57,7 +88,40 @@ const AdminUsers = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-extrabold text-[#1a174d] tracking-tight">Users Management</h1>
+        <h1 className="text-3xl font-extrabold text-[#1a174d] tracking-tight">
+          Users Management
+        </h1>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* NEW — Pending Verification quick-filter tab                         */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={() => { setPendingVendorOnly(false); setPage(1); }}
+            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all ${
+              !pendingVendorOnly
+                ? 'bg-[#ff6b00] text-white shadow-md'
+                : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 shadow-sm'
+            }`}
+          >
+            All Users
+          </button>
+          <button
+            onClick={() => { setPendingVendorOnly(true); setRoleFilter(''); setPage(1); }}
+            className={`relative px-4 py-2 text-sm font-bold rounded-xl transition-all ${
+              pendingVendorOnly
+                ? 'bg-[#ff6b00] text-white shadow-md'
+                : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 shadow-sm'
+            }`}
+          >
+            Pending Verification
+            {pendingVendorCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow">
+                {pendingVendorCount > 99 ? '99+' : pendingVendorCount}
+              </span>
+            )}
+          </button>
+        </div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -69,27 +133,33 @@ const AdminUsers = () => {
               onChange={e => setSearch(e.target.value)}
               className="flex-1 px-4 py-2.5 bg-white border border-gray-100 rounded-xl text-gray-700 text-sm placeholder:text-gray-400 focus:outline-none focus:border-[#ff6b00]/50 shadow-sm"
             />
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="px-5 py-2.5 bg-[#ff6b00] hover:bg-orange-600 text-white text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg"
             >
               Search
             </button>
           </form>
-          <select
-            value={roleFilter}
-            onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
-            className="px-4 py-2.5 bg-white border border-gray-100 rounded-xl text-gray-700 text-sm focus:outline-none focus:border-[#ff6b00]/50 shadow-sm cursor-pointer"
-          >
-            <option value="">All Roles</option>
-            <option value="user">User</option>
-            <option value="vendor">Vendor</option>
-            <option value="superadmin">Superadmin</option>
-          </select>
+
+          {/* Role filter — hidden when pending-only is active */}
+          {!pendingVendorOnly && (
+            <select
+              value={roleFilter}
+              onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
+              className="px-4 py-2.5 bg-white border border-gray-100 rounded-xl text-gray-700 text-sm focus:outline-none focus:border-[#ff6b00]/50 shadow-sm cursor-pointer"
+            >
+              <option value="">All Roles</option>
+              <option value="user">User</option>
+              <option value="vendor">Vendor</option>
+              <option value="superadmin">Superadmin</option>
+            </select>
+          )}
         </div>
 
         {/* Results count */}
-        <p className="text-gray-400 text-sm font-semibold">{total} user{total !== 1 ? 's' : ''} found</p>
+        <p className="text-gray-400 text-sm font-semibold">
+          {total} {pendingVendorOnly ? 'pending verification request' : 'user'}{total !== 1 ? 's' : ''} found
+        </p>
 
         {/* Table */}
         <div className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm">
@@ -98,7 +168,9 @@ const AdminUsers = () => {
               <div className="w-8 h-8 border-3 border-[#ff6b00] border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : users.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 font-bold">No users found.</div>
+            <div className="text-center py-16 text-gray-400 font-bold">
+              {pendingVendorOnly ? 'No pending vendor verification requests.' : 'No users found.'}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -126,36 +198,45 @@ const AdminUsers = () => {
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${ROLE_BADGES[u.role] || ROLE_BADGES.user}`}>
                           {u.role}
                         </span>
                       </td>
+
                       <td className="px-6 py-4">
                         {u.role === 'vendor' ? (
-                          <span className={`text-xs font-bold inline-flex items-center px-2.5 py-1 rounded-full ${u.vendor_verified ? 'text-[#12B76A] bg-[#EBFDF5]' : 'text-[#FF6B00] bg-[#FFF4ED]'}`}>
+                          <span className={`text-xs font-bold inline-flex items-center px-2.5 py-1 rounded-full ${
+                            u.vendor_verified
+                              ? 'text-[#12B76A] bg-[#EBFDF5]'
+                              : 'text-[#FF6B00] bg-[#FFF4ED]'
+                          }`}>
                             {u.vendor_verified ? '✓ Verified' : '⏳ Pending'}
                           </span>
                         ) : (
                           <span className="text-gray-400 text-xs">—</span>
                         )}
                       </td>
+
                       <td className="px-6 py-4">
                         <span className={`inline-block w-2.5 h-2.5 rounded-full mr-2 ${u.is_active ? 'bg-[#12B76A]' : 'bg-[#F04438]'}`}></span>
                         <span className={`text-xs font-bold ${u.is_active ? 'text-[#12B76A]' : 'text-[#F04438]'}`}>
                           {u.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
+
                       <td className="px-6 py-4 text-gray-400 font-medium text-xs">
                         {new Date(u.created_at).toLocaleDateString()}
                       </td>
+
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             to={`/admin/users/${u.id}`}
                             className="px-3 py-1.5 text-xs font-bold text-[#ff6b00] bg-orange-50 hover:bg-[#FFF4ED]/80 rounded-xl transition-all shadow-sm"
                           >
-                            View
+                            {pendingVendorOnly ? 'Review' : 'View'}
                           </Link>
                           <button
                             onClick={() => handleToggleStatus(u.id, u.is_active)}

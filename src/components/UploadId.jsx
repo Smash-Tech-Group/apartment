@@ -9,6 +9,8 @@ import Lock from '../assets/icons/2.svg';
 import Bunk from "../assets/icons/19.svg";
 import Desk from "../assets/icons/20.svg";
 import Hands from "../assets/icons/21.svg";
+import { apiFetch } from '../lib/api';
+import { useToast } from './Toast';
 
 export default function PasswordSecurity() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,6 +26,7 @@ export default function PasswordSecurity() {
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
   const MAX_BYTES = 5 * 1024 * 1024; // 5MB
@@ -63,6 +66,67 @@ export default function PasswordSecurity() {
     return classes[Math.max(0, Math.min(MAX_STEPS, step))];
   }
 
+  async function uploadFileToServer(fileData, which) {
+    const formData = new FormData();
+    formData.append('file', fileData.file);
+
+    if (which === 'front') {
+      setFrontUploading(true);
+      setFrontProgressStep(0);
+    } else {
+      setBackUploading(true);
+      setBackProgressStep(0);
+    }
+
+    // Simulate progress
+    const duration = 2200 + Math.floor(Math.random() * 700);
+    const intervalMs = Math.max(80, Math.floor(duration / MAX_STEPS));
+    let step = 0;
+    const progressTimer = setInterval(() => {
+      step += 1;
+      if (which === 'front') setFrontProgressStep(step);
+      else setBackProgressStep(step);
+      if (step >= MAX_STEPS) {
+        clearInterval(progressTimer);
+      }
+    }, intervalMs);
+
+    try {
+      const response = await apiFetch('/users/upload-id', {
+        method: 'POST',
+        body: formData,
+      });
+
+      clearInterval(progressTimer);
+      
+      if (which === 'front') {
+        setFrontProgressStep(MAX_STEPS);
+        setFrontUploading(false);
+      } else {
+        setBackProgressStep(MAX_STEPS);
+        setBackUploading(false);
+      }
+
+      showToast('ID document uploaded successfully!', 'success');
+      return true;
+    } catch (error) {
+      clearInterval(progressTimer);
+      
+      if (which === 'front') {
+        setFrontUploading(false);
+        setFrontError(error.message || 'Upload failed');
+        setFrontFile(null);
+      } else {
+        setBackUploading(false);
+        setBackError(error.message || 'Upload failed');
+        setBackFile(null);
+      }
+
+      showToast(error.message || 'Upload failed. Please try again.', 'error');
+      return false;
+    }
+  }
+
   function simulateUpload(which) {
     const duration = 2200 + Math.floor(Math.random() * 700); // 2.2s - 2.9s
     const intervalMs = Math.max(80, Math.floor(duration / MAX_STEPS));
@@ -98,8 +162,9 @@ export default function PasswordSecurity() {
     setFrontError('');
     // set immediately so filename shows, preview will render after upload finishes too
     const previewUrl = createPreview(file);
-    setFrontFile({ file, name: file.name, previewUrl, type: file.type });
-    simulateUpload('front');
+    const fileData = { file, name: file.name, previewUrl, type: file.type };
+    setFrontFile(fileData);
+    uploadFileToServer(fileData, 'front');
   }
 
   function handleBackChange(e) {
@@ -113,8 +178,9 @@ export default function PasswordSecurity() {
     }
     setBackError('');
     const previewUrl = createPreview(file);
-    setBackFile({ file, name: file.name, previewUrl, type: file.type });
-    simulateUpload('back');
+    const fileData = { file, name: file.name, previewUrl, type: file.type };
+    setBackFile(fileData);
+    uploadFileToServer(fileData, 'back');
   }
 
   async function uploadToServer() {

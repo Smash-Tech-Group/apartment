@@ -88,8 +88,8 @@ export default function CompleteRide() {
 
   return (
     <WizardLayout
-      title="Review and Go Live"
-      subtitle="Confirm all details and publish your ride so renters can discover it."
+      title="Review and Submit"
+      subtitle="Confirm all details and submit your ride for admin review."
       rightCta={
         <button 
           onClick={goNext} 
@@ -102,9 +102,9 @@ export default function CompleteRide() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Publishing...
+              Submitting...
             </span>
-          ) : "Publish Ride"}
+          ) : "Submit for Review"}
         </button>
       }
     >
@@ -149,7 +149,7 @@ export default function CompleteRide() {
           
           <div className="mt-8 p-4 bg-orange-50 rounded-xl border border-orange-100">
             <p className="text-xs text-orange-800 leading-relaxed">
-              By clicking "Publish Ride", you agree to our Terms of Use and confirm that you have the legal right to list this vehicle.
+              By clicking "Submit for Review", you agree to our Terms of Use and confirm that you have the legal right to list this vehicle.
             </p>
           </div>
         </div>

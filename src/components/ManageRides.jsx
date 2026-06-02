@@ -9,18 +9,27 @@ import Navbar from './Navbar';
 import NotAuthenticated from './NotAuthenticated';
 import Car from '../assets/icons/26.svg';
 import Lock from '../assets/icons/2.svg';
-
 import Car1 from "../assets/icons/28.svg";
 import Car2 from "../assets/icons/29.svg";
 import Car3 from "../assets/icons/30.svg";
+import VendorCriteriaModal from './VendorCriteriaModal';
 
 export default function ManageRides() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isVendor } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  function handleAddListing() {
+    if (isVendor) {
+      setIsModalOpen(true);
+    } else {
+      setIsVendorModalOpen(true);
+    }
+  }
 
   useEffect(() => {
     const fetchRides = async () => {
@@ -79,7 +88,7 @@ export default function ManageRides() {
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-900">Ride Listings</h1>
               {rides.length > 0 && (
                 <button 
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={handleAddListing}
                   className='inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-[#FF7D01] text-white text-sm font-medium hover:bg-opacity-90 transition-colors'>
                   <span className='text-lg'>+</span> Add Listing
                 </button>
@@ -111,7 +120,7 @@ export default function ManageRides() {
                   <div className='font-extralight text-sm sm:text-base text-[#333333] max-w-md'>You haven't uploaded any rides yet. Add one now to start earning on Smash Apartments.</div>
                   <div>
                     <button 
-                      onClick={() => setIsModalOpen(true)}
+                      onClick={handleAddListing}
                       className='inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-full bg-[#FF7D01] text-white text-sm sm:text-base font-medium hover:bg-opacity-90 transition-colors'>
                       <span className='text-lg sm:text-xl'>+</span>
                       Add a Listing
@@ -153,9 +162,23 @@ export default function ManageRides() {
                         <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Starting from</span>
                         <span className="text-[#FF7D01] font-bold text-xl">₦{Number(ride.price)?.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                        Active
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium
+                        {ride.status === 'published' ? 'bg-green-50 text-green-600' :
+                         ride.status === 'pending_approval' ? 'bg-orange-50 text-orange-600' :
+                         ride.status === 'rejected' ? 'bg-red-50 text-red-500' :
+                         ride.status === 'suspended' ? 'bg-red-50 text-red-500' :
+                         'bg-gray-50 text-gray-400'}">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          ride.status === 'published' ? 'bg-green-500 animate-pulse' :
+                          ride.status === 'pending_approval' ? 'bg-orange-400' :
+                          ride.status === 'rejected' || ride.status === 'suspended' ? 'bg-red-400' :
+                          'bg-gray-300'
+                        }`}></span>
+                        {ride.status === 'published' ? 'Active' :
+                         ride.status === 'pending_approval' ? 'Pending' :
+                         ride.status === 'rejected' ? 'Rejected' :
+                         ride.status === 'suspended' ? 'Suspended' :
+                         ride.status || 'Draft'}
                       </div>
                     </div>
                   </div>
@@ -177,7 +200,14 @@ export default function ManageRides() {
         </div>
       </main>
 
-      {/* Modal */}
+      {/* Vendor Criteria Modal */}
+      <VendorCriteriaModal
+        isOpen={isVendorModalOpen}
+        onClose={() => setIsVendorModalOpen(false)}
+        onVerified={() => setIsModalOpen(true)}
+      />
+
+      {/* How-to Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 relative shadow-xl my-auto max-h-[98vh] md:max-h-none overflow-y-auto">
